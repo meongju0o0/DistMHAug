@@ -494,12 +494,13 @@ def get_available_port(ip):
     """Get available port with specified ip."""
     import socket
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind((ip, 0))  # Binding to port 0 will let the OS pick an available port
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    for port in range(1234, 65535):
         try:
-            _, port = sock.getsockname()
+            sock.connect((ip, port))
         except:
-            raise RuntimeError("Failed to get available port for ip~{}".format(ip))
+            return port
+    raise RuntimeError("Failed to get available port for ip~{}".format(ip))
 
 
 def submit_jobs(args, udf_command, dry_run=False):
