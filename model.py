@@ -23,8 +23,7 @@ class SimpleAGG(nn.Module):
         self.layers = nn.ModuleList()
 
         for _ in range(num_hop):
-            self.layers.append(
-                dglnn.SAGEConv(in_feats, n_classes, aggregator_type="add", feat_drop=0, bias=False))
+            self.layers.append(dglnn.SAGEConv(in_feats, n_classes, aggregator_type="add", feat_drop=0, bias=False))
 
         self.dropout = nn.Dropout(dropout)
         self.reset_parameters()
