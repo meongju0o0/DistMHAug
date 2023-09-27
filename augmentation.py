@@ -3,6 +3,10 @@ from scipy.stats import truncnorm
 import dgl
 
 
+def log_normal(a, b, sigma):
+    return -1 * th.pow(a - b, 2) / (2 * th.pow(sigma, 2))  # /root2pi / sigma
+
+
 def our_truncnorm(a, b, mu, sigma, x=None, mode='pdf'):
     a, b = (a - mu) / sigma, (b - mu) / sigma
     if mode=='pdf':
@@ -16,12 +20,8 @@ def our_truncnorm(a, b, mu, sigma, x=None, mode='pdf'):
 #     edge_index_w_sl = u.add_self_loops(edge_index, num_nodes=n)[0]
 #     s_vec = agg_model(features, edge_index_w_sl)
 #     return s_vec
-
-
-def log_normal(a, b, sigma):
-    return -1 * th.pow(a - b, 2) / (2 * th.pow(sigma, 2))  # /root2pi / sigma
-
-
+#
+#
 # def augment(args, org_edge_index, org_feature, delta_G_e, delta_G_v):
 #     m = org_edge_index.shape[1]
 #     num_edge_drop = int(m * delta_G_e)
