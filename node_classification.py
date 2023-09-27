@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from utils import compute_acc, evaluate
+from evaluation import compute_acc, evaluate
 from model import SimpleAGG, DistSAGE
 from loss import HLoss, XeLoss, Jensen_Shannon
 
