@@ -35,14 +35,14 @@ class SimpleAGG(nn.Module):
         for layer in self.layers:
             nn.init.ones_(layer.weight)
 
-    def forward(self, blocks, x):
+    def forward(self, graph, x):
         """
         Forward function
 
         Parameters
         ----------
-        blocks : List[DGLBlock]
-            Sampled blocks.
+        graph : DGLGraph
+            Graph to aggregate
         x : DistTensor
             Feature data.
 
@@ -51,8 +51,8 @@ class SimpleAGG(nn.Module):
         Aggregated Value
         """
         h = x
-        for i, (layer, block) in enumerate(zip(self.layers, blocks)):
-            h = layer(block, h)
+        for i, layer in enumerate(self.layers):
+            h = layer(graph, h)
             if i != len(self.layers) - 1:
                 h = self.dropout(h)
         return h
