@@ -6,7 +6,7 @@ import torch.nn as nn
 import tqdm
 
 
-class SimpleAgg(nn.Module):
+class SimpleAGG(nn.Module):
     """
     Simple Aggregation Model to Calculate ego-graph's changing rate
 
