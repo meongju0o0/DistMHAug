@@ -35,7 +35,7 @@ class SimpleAGG(nn.Module):
         for layer in self.layers:
             nn.init.ones_(layer.weight)
 
-    def forward(self, graph, x):
+    def forward(self, graph):
         """
         Forward function
 
@@ -43,14 +43,12 @@ class SimpleAGG(nn.Module):
         ----------
         graph : DGLGraph
             Graph to aggregate
-        x : DistTensor
-            Feature data.
 
         Returns
         -------
         Aggregated Value
         """
-        h = x
+        h = graph.ndata["one"] # one: the feature to calculate changing rate
         for i, layer in enumerate(self.layers):
             h = layer(graph, h)
             if i != len(self.layers) - 1:
