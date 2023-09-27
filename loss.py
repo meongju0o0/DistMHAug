@@ -15,8 +15,8 @@ class HLoss(nn.Module):
         """
         Parameters
         ----------
-        pred : DistTensor
-            Predicted Value
+        pred : torch.Tensor
+            Predicted labels.
         full : bool
             Decide whether to calculate sum of the loss or mean of the loss
 
@@ -45,10 +45,10 @@ class XeLoss(nn.Module):
         """
         Parameters
         ----------
-        pred : DistTensor
-            Predicted Value
-        label : DistTensor
-            Label
+        pred : torch.Tensor
+            Predicted labels.
+        label : torch.Tensor
+            Ground-truth labels.
 
         Returns
         -------
@@ -72,10 +72,10 @@ class Jensen_Shannon(nn.Module):
         """
         Parameters
         ----------
-        pred : DistTensor
-            Predicted Value
-        label : DistTensor
-            Label
+        pred : torch.Tensor
+            Predicted labels.
+        label : torch.Tensor
+            Ground-truth labels.
 
         Returns
         -------
