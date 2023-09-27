@@ -12,6 +12,60 @@ import torch.optim as optim
 import tqdm
 
 
+class SimpleAgg(nn.Module):
+    """
+    Simple Aggregation Model to Calculate ego-graph's changing rate
+
+    Parameters
+    ----------
+    num_hop : int
+        Depth of Aggregation
+    """
+
+    def __init__(
+            self, num_hop, in_feats = 1, n_hidden = 1, n_classes = 1, dropout = 0
+    ):
+        super().__init__()
+        self.layers = nn.ModuleList()
+
+        for _ in range(num_hop):
+            self.layers.append(
+                dglnn.SAGEConv(in_feats, n_classes, aggregator_type="add", feat_drop=0, bias=False))
+
+        self.dropout = nn.Dropout(dropout)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """
+        Reset weight parameters as a one
+        """
+        for layer in self.layers:
+            nn.init.ones_(layer.weight)
+
+    def forward(self, blocks, x):
+        """
+        Forward function
+
+        Parameters
+        ----------
+        blocks : List[DGLBlock]
+            Sampled blocks.
+        x : DistTensor
+            Feature data.
+
+        Returns
+        -------
+        Aggregated Value
+        """
+
+        h = x
+        for i, (layer, block) in enumerate(zip(self.layers, blocks)):
+            h = layer(block, h)
+            if i != len(self.layers) - 1:
+                h = self.dropout(h)
+        return h
+
+
 class DistSAGE(nn.Module):
     """
     SAGE model for distributed train and evaluation.
