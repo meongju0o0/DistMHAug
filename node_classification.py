@@ -57,7 +57,6 @@ class SimpleAgg(nn.Module):
         -------
         Aggregated Value
         """
-
         h = x
         for i, (layer, block) in enumerate(zip(self.layers, blocks)):
             h = layer(block, h)
