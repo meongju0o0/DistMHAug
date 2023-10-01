@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from evaluation import compute_acc, evaluate
-from model import SimpleAGG, DistSAGE
+from model import DistSAGE
 from loss import HLoss, XeLoss, Jensen_Shannon
 
 
@@ -29,9 +29,7 @@ def run(args, device, data):
         number of classes, graph.
     """
     train_nid, val_nid, test_nid, in_feats, n_classes, g = data
-    sampler = dgl.dataloading.NeighborSampler(
-        [int(fanout) for fanout in args.fan_out.split(",")]
-    )
+    sampler = dgl.dataloading.NeighborSampler([int(fanout) for fanout in args.fan_out.split(",")])
     dataloader = dgl.dataloading.DistNodeDataLoader(
         g,
         train_nid,
@@ -52,9 +50,7 @@ def run(args, device, data):
     if args.num_gpus == 0:
         model = th.nn.parallel.DistributedDataParallel(model)
     else:
-        model = th.nn.parallel.DistributedDataParallel(
-            model, device_ids=[device], output_device=device
-        )
+        model = th.nn.parallel.DistributedDataParallel(model, device_ids=[device], output_device=device)
     loss_fcn = nn.CrossEntropyLoss()
     loss_fcn = loss_fcn.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -79,17 +75,21 @@ def run(args, device, data):
 
         with model.join():
             for step, (input_nodes, seeds, blocks) in enumerate(dataloader):
+                # Declare time variable to calculate computing time
                 tic_step = time.time()
                 sample_time += tic_step - start
+
                 # Slice feature and label.
                 batch_inputs = g.ndata["features"][input_nodes]
                 batch_labels = g.ndata["labels"][seeds].long()
                 num_seeds += len(blocks[-1].dstdata[dgl.NID])
                 num_inputs += len(blocks[0].srcdata[dgl.NID])
+
                 # Move to target device.
                 blocks = [block.to(device) for block in blocks]
                 batch_inputs = batch_inputs.to(device)
                 batch_labels = batch_labels.to(device)
+
                 # Compute loss and prediction.
                 start = time.time()
                 batch_pred = model(blocks, batch_inputs)
@@ -97,6 +97,8 @@ def run(args, device, data):
                 forward_end = time.time()
                 optimizer.zero_grad()
                 loss.backward()
+
+                # Calculate computing time
                 compute_end = time.time()
                 forward_time += forward_end - start
                 backward_time += compute_end - forward_end
@@ -235,28 +237,18 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Distributed GraphSAGE.")
-    parser.add_argument("--graph_name", type=str, help="graph name")
-    parser.add_argument(
-        "--ip_config", type=str, help="The file for IP configuration"
-    )
-    parser.add_argument(
-        "--part_config", type=str, help="The path to the partition config file"
-    )
-    parser.add_argument(
-        "--n_classes", type=int, default=0, help="the number of classes"
-    )
-    parser.add_argument(
-        "--backend",
-        type=str,
-        default="gloo",
-        help="pytorch distributed backend",
-    )
-    parser.add_argument(
-        "--num_gpus",
-        type=int,
-        default=0,
-        help="the number of GPU device. Use 0 for CPU training",
-    )
+    parser.add_argument("--graph_name", type=str,
+                        help="graph name")
+    parser.add_argument("--ip_config", type=str,
+                        help="The file for IP configuration")
+    parser.add_argument("--part_config", type=str,
+                        help="The path to the partition config file")
+    parser.add_argument("--n_classes", type=int, default=0,
+                        help="the number of classes")
+    parser.add_argument("--backend", type=str, default="gloo",
+                        help="pytorch distributed backend")
+    parser.add_argument("--num_gpus", type=int, default=0,
+                        help="the number of GPU device. Use 0 for CPU training")
     parser.add_argument("--num_epochs", type=int, default=20)
     parser.add_argument("--num_hidden", type=int, default=16)
     parser.add_argument("--num_layers", type=int, default=2)
@@ -267,16 +259,9 @@ if __name__ == "__main__":
     parser.add_argument("--eval_every", type=int, default=5)
     parser.add_argument("--lr", type=float, default=0.003)
     parser.add_argument("--dropout", type=float, default=0.5)
-    parser.add_argument(
-        "--local_rank", type=int, help="get rank of the process"
-    )
-    parser.add_argument(
-        "--pad-data",
-        default=False,
-        action="store_true",
-        help="Pad train nid to the same length across machine, to ensure num "
-        "of batches to be the same.",
-    )
+    parser.add_argument("--local_rank", type=int, help="get rank of the process")
+    parser.add_argument("--pad-data", default=False, action="store_true",
+        help="Pad train nid to the same length across machine, to ensure num of batches to be the same.")
     args = parser.parse_args()
     print(f"Arguments: {args}")
     main(args)

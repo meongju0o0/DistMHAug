@@ -22,6 +22,7 @@ def drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug):
     aug_g = MHNodeDropping(aug_g, delta_g_v_aug)
     return aug_g
 
+@th.no_grad()
 def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     delta_g_e = 1 - prev_aug_g.num_edges() / org_g.num_edges()
     delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, sigma=args.sigma_delta_e)
@@ -41,35 +42,34 @@ def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     batch_cnt = 0
     ent_sum = 0
 
-    with th.no_grad():
-        for step, (input_nodes, seeds, blocks) in enumerate(dataloader):
-            batch_cnt += 1
+    for step, (input_nodes, seeds, blocks) in enumerate(dataloader):
+        batch_cnt += 1
 
-            # Slice feature and label.
-            batch_inputs = org_g.ndata["features"][input_nodes]
-            batch_labels = org_g.ndata["labels"][seeds].long()
-            num_seeds += len(blocks[-1].dstdata[dgl.NID])
-            num_inputs += len(blocks[0].srcdata[dgl.NID])
+        # Slice feature and label.
+        batch_inputs = org_g.ndata["features"][input_nodes]
+        batch_labels = org_g.ndata["labels"][seeds].long()
+        num_seeds += len(blocks[-1].dstdata[dgl.NID])
+        num_inputs += len(blocks[0].srcdata[dgl.NID])
 
-            # Move to target device.
-            blocks = [block.to(device) for block in blocks]
-            batch_inputs = batch_inputs.to(device)
-            batch_labels = batch_labels.to(device)
+        # Move to target device.
+        blocks = [block.to(device) for block in blocks]
+        batch_inputs = batch_inputs.to(device)
+        batch_labels = batch_labels.to(device)
 
-            # Get prediction to calculate ent.
-            batch_pred = model(blocks, batch_inputs)
+        # Get prediction to calculate ent.
+        batch_pred = model(blocks, batch_inputs)
 
-            max_ent = h_loss(th.full((1, batch_pred.shape[1]), 1 / batch_pred.shape[1])).item()
-            ent = h_loss(batch_pred.detach(), True) / max_ent
-            ent_sum += ent
+        max_ent = h_loss(th.full((1, batch_pred.shape[1]), 1 / batch_pred.shape[1])).item()
+        ent = h_loss(batch_pred.detach(), True) / max_ent
+        ent_sum += ent
 
-        ent_mean = ent_sum / batch_cnt
-        org_ego = aggregate(org_g, agg_model)
+    ent_mean = ent_sum / batch_cnt
+    org_ego = aggregate(org_g, agg_model)
 
-        delta_g_e_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
-        delta_g_aug_e_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
-        delta_g_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
-        delta_g_aug_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
+    delta_g_e_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
+    delta_g_aug_e_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
+    delta_g_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
+    delta_g_aug_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
 
     p = (args.lam1_e * log_normal(delta_g_e_, args.mu_e, args.a_e * ent_mean + args.b_e) +
         args.lam1_v * log_normal(delta_g_v_, args.mu_v, args.a_v * ent_mean + args.b_v))
