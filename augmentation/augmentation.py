@@ -1,3 +1,5 @@
+import random
+
 import dgl
 import torch as th
 import numpy as np
@@ -82,3 +84,10 @@ def mh_algorithm(args, org_g, prev_aug_g, model, dataloader, device):
             args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e_aug + 1, org_g.num_edges() * delta_g_e_aug + 1) + \
             np.log(truncnorm.pdf(delta_g_v_aug, 0, 1, loc=delta_g_v, scale=args.sigma_delta_v)) + \
             args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v_aug + 1, org_g.num_nodes() * delta_g_v_aug + 1)
+
+    acceptance = ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
+
+    if np.log(random.random()) < acceptance:
+        return NotImplemented
+    else:
+        return False
