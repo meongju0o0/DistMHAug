@@ -1,20 +1,9 @@
-import copy
-
+import dgl
 import torch as th
 from scipy.stats import truncnorm
-import dgl
 
-
-def log_normal(a, b, sigma):
-    return -1 * th.pow(a - b, 2) / (2 * th.pow(sigma, 2))
-
-
-def our_truncnorm(a, b, mu, sigma, x=None, mode='pdf'):
-    a, b = (a - mu) / sigma, (b - mu) / sigma
-    if mode=='pdf':
-        return truncnorm.pdf(x, a, b, loc = mu, scale = sigma)
-    elif mode=='rvs':
-        return truncnorm.rvs(a, b, loc = mu, scale = sigma)
+from calc import log_normal
+from drop import MHEdgeDropping, MHNodeDropping
 
 
 def aggregate(g, agg_model):
@@ -22,14 +11,16 @@ def aggregate(g, agg_model):
     s_vec = agg_model(g)
     return s_vec
 
-
-def augment(org_g, delta_G_e, delta_G_v):
-    aug_g = copy.deepcopy(org_g)
-
-    drop_edge = dgl.transforms.DropEdge(delta_G_e)
-    drop_node = dgl.transforms.FeatMask(delta_G_v, node_feat_names=["features"])
-
-    aug_g = drop_edge(aug_g)
-    aug_g = drop_node(aug_g)
-
+def augment(org_g, delta_g_e_aug, delta_g_v_aug):
+    aug_g = MHEdgeDropping(org_g, delta_g_e_aug)
+    aug_g = MHNodeDropping(aug_g, delta_g_v_aug)
     return aug_g
+
+def mh_algorithm(args, org_g, aug_g):
+    delta_g_e = 1 - aug_g.num_edges() / org_g.num_edges()
+    delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, sigma=args.sigma_delta_e)
+
+    delta_g_v = 1 - aug_g.num_nodes() / org_g.num_nodes()
+    delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, sigma=args.sigma_delta_v)
+
+    aug_g_2 = augment(org_g, delta_g_e_aug, delta_g_v_aug)
