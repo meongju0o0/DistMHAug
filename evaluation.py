@@ -1,6 +1,5 @@
 import torch as th
 
-
 def evaluate(model, g, inputs, labels, val_nid, test_nid, batch_size, device):
     """
     Evaluate the model on the validation and test set.
@@ -31,14 +30,12 @@ def evaluate(model, g, inputs, labels, val_nid, test_nid, batch_size, device):
     float
         Test accuracy.
     """
+
     model.eval()
     with th.no_grad():
         pred = model.inference(g, inputs, batch_size, device)
     model.train()
-    return compute_acc(pred[val_nid], labels[val_nid]), compute_acc(
-        pred[test_nid], labels[test_nid]
-    )
-
+    return compute_acc(pred[val_nid], labels[val_nid]), compute_acc(pred[test_nid], labels[test_nid])
 
 def compute_acc(pred, labels):
     """
@@ -56,5 +53,6 @@ def compute_acc(pred, labels):
     float
         Accuracy.
     """
+
     labels = labels.long()
-    return (th.argmax(pred, dim=1) == labels).float().sum() / len(pred)
+    return (th.argmax(pred, dim=1) == labels).float.sum() / len(pred)

@@ -24,3 +24,5 @@ def mh_algorithm(args, org_g, aug_g):
     delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, sigma=args.sigma_delta_v)
 
     aug_g_2 = augment(org_g, delta_g_e_aug, delta_g_v_aug)
+
+    return aug_g_2

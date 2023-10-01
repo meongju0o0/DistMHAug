@@ -1,8 +1,11 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+class Loss(nn.Module):
+    def __init__(self):
+        super(Loss, self).__init__()
 
-class HLoss(nn.Module):
+class HLoss(Loss):
     """
     Loss for Regularizing
     Penalizes unconfident predictions and sharpens predictions
@@ -11,7 +14,8 @@ class HLoss(nn.Module):
     def __init__(self):
         super(HLoss, self).__init__()
 
-    def forward(self, pred, full=False):
+    @staticmethod
+    def forward(pred, full=False):
         """
         Parameters
         ----------
@@ -33,7 +37,7 @@ class HLoss(nn.Module):
         return b
 
 
-class XeLoss(nn.Module):
+class XeLoss(Loss):
     """
     Loss using Kullback-Leibler Divergence
     Encourages the consistency of predictions on two consecutive augmented samples G^(t), G^(t+1)
@@ -41,7 +45,8 @@ class XeLoss(nn.Module):
     def __init__(self):
         super(XeLoss, self).__init__()
 
-    def forward(self, pred, label):
+    @staticmethod
+    def forward(pred, label):
         """
         Parameters
         ----------
@@ -61,14 +66,15 @@ class XeLoss(nn.Module):
         return b
 
 
-class Jensen_Shannon(nn.Module):
+class Jensen_Shannon(Loss):
     """
     Symmetrical KL Divergence
     """
     def __init__(self):
         super(Jensen_Shannon, self).__init__()
 
-    def forward(self, pred, label):
+    @staticmethod
+    def forward(pred, label):
         """
         Parameters
         ----------
