@@ -17,19 +17,19 @@ def aggregate(g, agg_model):
     s_vec = agg_model(g)
     return s_vec
 
-def augment(org_g, delta_g_e_aug, delta_g_v_aug):
+def drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug):
     aug_g = MHEdgeDropping(org_g, delta_g_e_aug)
     aug_g = MHNodeDropping(aug_g, delta_g_v_aug)
     return aug_g
 
-def mh_algorithm(args, org_g, prev_aug_g, model, dataloader, device):
+def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     delta_g_e = 1 - prev_aug_g.num_edges() / org_g.num_edges()
     delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, sigma=args.sigma_delta_e)
 
     delta_g_v = 1 - prev_aug_g.num_nodes() / org_g.num_nodes()
     delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, sigma=args.sigma_delta_v)
 
-    cur_aug_g = augment(org_g, delta_g_e_aug, delta_g_v_aug)
+    cur_aug_g = drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug)
 
     agg_model = SimpleAGG
     h_loss = HLoss()
