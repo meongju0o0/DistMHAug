@@ -71,8 +71,8 @@ def mh_algorithm(args, org_g, prev_aug_g, model, dataloader, device):
         delta_g_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
         delta_g_aug_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
 
-    p = args.lam1_e * log_normal(delta_g_e, args.mu_e, args.a_e * ent_mean + args.b_e) + \
-        args.lam1_v * log_normal(delta_g_v, args.mu_v, args.a_v * ent_mean + args.b_v)
+    p = args.lam1_e * log_normal(delta_g_e_, args.mu_e, args.a_e * ent_mean + args.b_e) + \
+        args.lam1_v * log_normal(delta_g_v_, args.mu_v, args.a_v * ent_mean + args.b_v)
     p_aug = args.lam1_e * log_normal(delta_g_aug_e_, args.mu_e, args.a_e * ent_mean + args.b_e) + \
             args.lam1_v * log_normal(delta_g_aug_v_, args.mu_v, args.a_v * ent_mean + args.b_v)
 
@@ -88,6 +88,6 @@ def mh_algorithm(args, org_g, prev_aug_g, model, dataloader, device):
     acceptance = ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
 
     if np.log(random.random()) < acceptance:
-        return NotImplemented
+        return cur_aug_g
     else:
-        return False
+        return None
