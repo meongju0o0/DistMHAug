@@ -81,8 +81,7 @@ def mh_algorithm(args, org_g, prev_aug_g, model, dataloader, device):
         np.log(truncnorm.pdf(delta_g_v, 0, 1, loc=delta_g_v_aug, scale=args.sigma_delta_v)) +
         args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v+1, org_g.num_nodes() * delta_g_v+1))
     q_aug = (np.log(truncnorm.pdf(delta_g_e_aug, 0, 1, loc=delta_g_e, scale=args.sigma_delta_e)) +
-             args.lam2_e *
-             betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e_aug+1, org_g.num_edges() * delta_g_e_aug+1) +
+             args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e_aug+1, org_g.num_edges() * delta_g_e_aug+1) +
              np.log(truncnorm.pdf(delta_g_v_aug, 0, 1, loc=delta_g_v, scale=args.sigma_delta_v)) +
              args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v_aug+1, org_g.num_nodes() * delta_g_v_aug+1))
 
