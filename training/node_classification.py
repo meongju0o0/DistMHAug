@@ -191,15 +191,9 @@ def main(args):
             node_trainer_ids=g.ndata["trainer_id"],
         )
     else:
-        train_nid = dgl.distributed.node_split(
-            g.ndata["train_mask"], pb, force_even=True
-        )
-        val_nid = dgl.distributed.node_split(
-            g.ndata["val_mask"], pb, force_even=True
-        )
-        test_nid = dgl.distributed.node_split(
-            g.ndata["test_mask"], pb, force_even=True
-        )
+        train_nid = dgl.distributed.node_split(g.ndata["train_mask"], pb, force_even=True)
+        val_nid = dgl.distributed.node_split(g.ndata["val_mask"], pb, force_even=True)
+        test_nid = dgl.distributed.node_split(g.ndata["test_mask"], pb, force_even=True)
     local_nid = pb.partid2nids(pb.partid).detach().numpy()
     num_train_local = len(np.intersect1d(train_nid.numpy(), local_nid))
     num_val_local = len(np.intersect1d(val_nid.numpy(), local_nid))
@@ -238,17 +232,17 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Distributed GraphSAGE.")
     parser.add_argument("--graph_name", type=str,
-                        help="graph name")
+        help="graph name")
     parser.add_argument("--ip_config", type=str,
-                        help="The file for IP configuration")
+        help="The file for IP configuration")
     parser.add_argument("--part_config", type=str,
-                        help="The path to the partition config file")
+        help="The path to the partition config file")
     parser.add_argument("--n_classes", type=int, default=0,
-                        help="the number of classes")
+        help="the number of classes")
     parser.add_argument("--backend", type=str, default="gloo",
-                        help="pytorch distributed backend")
+        help="pytorch distributed backend")
     parser.add_argument("--num_gpus", type=int, default=0,
-                        help="the number of GPU device. Use 0 for CPU training")
+        help="the number of GPU device. Use 0 for CPU training")
     parser.add_argument("--num_epochs", type=int, default=20)
     parser.add_argument("--num_hidden", type=int, default=16)
     parser.add_argument("--num_layers", type=int, default=2)
