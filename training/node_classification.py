@@ -55,6 +55,11 @@ def run(args, device, data):
     loss_fcn = loss_fcn.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
+    # Initial var declare and copy for augmentation training
+    org_g = g
+    aug_g = g
+    print(g)
+
     # Training loop.
     iter_tput = []
     epoch = 0
