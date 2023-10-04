@@ -55,4 +55,4 @@ def compute_acc(pred, labels):
     """
 
     labels = labels.long()
-    return (th.argmax(pred, dim=1) == labels).float.sum() / len(pred)
+    return (th.argmax(pred, dim=1) == labels).to(dtype=th.float32).sum() / len(pred)

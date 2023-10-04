@@ -9,9 +9,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from evaluation import compute_acc, evaluate
-from model import DistSAGE
-from loss import HLoss, XeLoss, Jensen_Shannon
+from .evaluation import compute_acc, evaluate
+from .model import DistSAGE
 
 
 def run(args, device, data):
@@ -56,9 +55,9 @@ def run(args, device, data):
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     # Initial var declare and copy for augmentation training
+    g.ndata["ones"] = th.ones(g.num_nodes())
     org_g = g
     aug_g = g
-    print(g)
 
     # Training loop.
     iter_tput = []
