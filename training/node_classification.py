@@ -1,3 +1,4 @@
+import copy
 import argparse
 import socket
 import time
@@ -9,8 +10,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from .evaluation import compute_acc, evaluate
-from .model import DistSAGE
+from evaluation import compute_acc, evaluate
+from model import DistSAGE
+
+from ..augmentation.augmentation import mh_aug
+from ..common.create_batch import AugDataLoader
 
 
 def run(args, device, data):
@@ -27,16 +31,16 @@ def run(args, device, data):
         This includes train/val/test IDs, feature dimension,
         number of classes, graph.
     """
-    train_nid, val_nid, test_nid, in_feats, n_classes, g = data
+    # Initial var declare and copy for augmentation training
+    train_nid, val_nid, test_nid, in_feats, n_classes, org_g = data
+    org_g.ndata["ones"] = th.ones(org_g.num_nodes())
+    cur_g = org_g
+
+    # Declare dataloader
     sampler = dgl.dataloading.NeighborSampler([int(fanout) for fanout in args.fan_out.split(",")])
-    dataloader = dgl.dataloading.DistNodeDataLoader(
-        g,
-        train_nid,
-        sampler,
-        batch_size=args.batch_size,
-        shuffle=True,
-        drop_last=False,
-    )
+    dataloader = AugDataLoader(org_g, train_nid, sampler, batch_size=args.batch_size, shuffle=True, drop_last=False)
+
+    # Declare Training Methods
     model = DistSAGE(
         in_feats,
         args.num_hidden,
@@ -53,11 +57,6 @@ def run(args, device, data):
     loss_fcn = nn.CrossEntropyLoss()
     loss_fcn = loss_fcn.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-
-    # Initial var declare and copy for augmentation training
-    g.ndata["ones"] = th.ones(g.num_nodes())
-    org_g = g
-    aug_g = g
 
     # Training loop.
     iter_tput = []
@@ -77,15 +76,22 @@ def run(args, device, data):
         start = time.time()
         step_time = []
 
-        with model.join():
-            for step, (input_nodes, seeds, blocks) in enumerate(dataloader):
+        with (model.join()):
+            prev_g = cur_g
+            cur_g = mh_aug(args, org_g, prev_g, model, dataloader, device)
+            for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in \
+                enumerate(dataloader.__iter__(prev_g, cur_g)):
+                # input_nodes: src nodes, i.e. whole nodes
+                # seeds: dst nodes
+                # blocks: Message Flow Graph
+
                 # Declare time variable to calculate computing time
                 tic_step = time.time()
                 sample_time += tic_step - start
 
                 # Slice feature and label.
-                batch_inputs = g.ndata["features"][input_nodes]
-                batch_labels = g.ndata["labels"][seeds].long()
+                batch_inputs = org_g.ndata["features"][input_nodes]
+                batch_labels = org_g.ndata["labels"][seeds].long()
                 num_seeds += len(blocks[-1].dstdata[dgl.NID])
                 num_inputs += len(blocks[0].srcdata[dgl.NID])
 
@@ -113,27 +119,26 @@ def run(args, device, data):
                 step_t = time.time() - tic_step
                 step_time.append(step_t)
                 iter_tput.append(len(blocks[-1].dstdata[dgl.NID]) / step_t)
-                if (step + 1) % args.log_every == 0:
-                    acc = compute_acc(batch_pred, batch_labels)
-                    gpu_mem_alloc = (
-                        th.cuda.max_memory_allocated() / 1000000
-                        if th.cuda.is_available()
-                        else 0
-                    )
-                    sample_speed = np.mean(iter_tput[-args.log_every :])
-                    mean_step_time = np.mean(step_time[-args.log_every :])
-                    print(
-                        f"Part {g.rank()} | Epoch {epoch:05d} | Step {step:05d}"
-                        f" | Loss {loss.item():.4f} | Train Acc {acc.item():.4f}"
-                        f" | Speed (samples/sec) {sample_speed:.4f}"
-                        f" | GPU {gpu_mem_alloc:.1f} MB | "
-                        f"Mean step time {mean_step_time:.3f} s"
-                    )
+                acc = compute_acc(batch_pred, batch_labels)
+                gpu_mem_alloc = (
+                    th.cuda.max_memory_allocated() / 1000000
+                    if th.cuda.is_available()
+                    else 0
+                )
+                sample_speed = np.mean(iter_tput[-args.log_every :])
+                mean_step_time = np.mean(step_time[-args.log_every :])
+                print(
+                    f"Part {org_g.rank()} | Epoch {epoch:05d} | Step {step:05d}"
+                    f" | Loss {loss.item():.4f} | Train Acc {acc.item():.4f}"
+                    f" | Speed (samples/sec) {sample_speed:.4f}"
+                    f" | GPU {gpu_mem_alloc:.1f} MB | "
+                    f"Mean step time {mean_step_time:.3f} s"
+                )
                 start = time.time()
 
         toc = time.time()
         print(
-            f"Part {g.rank()}, Epoch Time(s): {toc - tic:.4f}, "
+            f"Part {org_g.rank()}, Epoch Time(s): {toc - tic:.4f}, "
             f"sample+data_copy: {sample_time:.4f}, forward: {forward_time:.4f},"
             f" backward: {backward_time:.4f}, update: {update_time:.4f}, "
             f"#seeds: {num_seeds}, #inputs: {num_inputs}"
@@ -144,16 +149,16 @@ def run(args, device, data):
             start = time.time()
             val_acc, test_acc = evaluate(
                 model.module,
-                g,
-                g.ndata["features"],
-                g.ndata["labels"],
+                org_g,
+                org_g.ndata["features"],
+                org_g.ndata["labels"],
                 val_nid,
                 test_nid,
                 args.batch_size_eval,
                 device,
             )
             print(
-                f"Part {g.rank()}, Val Acc {val_acc:.4f}, "
+                f"Part {org_g.rank()}, Val Acc {val_acc:.4f}, "
                 f"Test Acc {test_acc:.4f}, time: {time.time() - start:.4f}"
             )
 
