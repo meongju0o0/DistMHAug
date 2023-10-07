@@ -1,4 +1,3 @@
-import copy
 import argparse
 import socket
 import time
