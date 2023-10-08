@@ -88,6 +88,9 @@ def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     acceptance = ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
 
     if np.log(random.random()) < acceptance:
-        return cur_aug_g
+        if delta_g_e + delta_g_v < delta_g_e_aug + delta_g_v_aug:
+            return cur_aug_g, True
+        else:
+            return cur_aug_g, False
     else:
         return None

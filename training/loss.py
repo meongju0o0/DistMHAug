@@ -42,6 +42,7 @@ class XeLoss(Loss):
     Loss using Kullback-Leibler Divergence
     Encourages the consistency of predictions on two consecutive augmented samples G^(t), G^(t+1)
     """
+
     def __init__(self):
         super(XeLoss, self).__init__()
 
@@ -70,6 +71,7 @@ class Jensen_Shannon(Loss):
     """
     Symmetrical KL Divergence
     """
+
     def __init__(self):
         super(Jensen_Shannon, self).__init__()
 

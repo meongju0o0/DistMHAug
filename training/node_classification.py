@@ -1,4 +1,3 @@
-import copy
 import argparse
 import socket
 import time
@@ -12,6 +11,7 @@ import torch.optim as optim
 
 from evaluation import compute_acc, evaluate
 from model import DistSAGE
+from loss import HLoss, XeLoss, Jensen_Shannon
 
 from ..augmentation.augmentation import mh_aug
 from ..common.create_batch import AugDataLoader
@@ -54,9 +54,11 @@ def run(args, device, data):
         model = th.nn.parallel.DistributedDataParallel(model)
     else:
         model = th.nn.parallel.DistributedDataParallel(model, device_ids=[device], output_device=device)
-    loss_fcn = nn.CrossEntropyLoss()
-    loss_fcn = loss_fcn.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    hard_xe_loss_op = nn.CrossEntropyLoss()
+    soft_xe_loss_op = XeLoss()
+    h_loss_op = HLoss()
+    js_loss_op = Jensen_Shannon()
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
 
     # Training loop.
     iter_tput = []
@@ -78,7 +80,7 @@ def run(args, device, data):
 
         with (model.join()):
             prev_g = cur_g
-            cur_g = mh_aug(args, org_g, prev_g, model, dataloader, device)
+            cur_g, kl_loss_opt = mh_aug(args, org_g, prev_g, model, dataloader, device)
             for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in \
                 enumerate(dataloader.__iter__(prev_g, cur_g)):
                 # input_nodes: src nodes, i.e. whole nodes
@@ -102,11 +104,27 @@ def run(args, device, data):
 
                 # Compute loss and prediction.
                 start = time.time()
+
                 batch_pred = model(blocks, batch_inputs)
-                loss = loss_fcn(batch_pred, batch_labels)
+                batch_prev_pred = model(prev_blocks, batch_inputs)
+                batch_cur_pred = model(cur_blocks, batch_inputs)
+
                 forward_end = time.time()
+
+                loss_XE = hard_xe_loss_op(batch_prev_pred, batch_labels)
+                if args.option_loss == 0:
+                    loss_KL = soft_xe_loss_op(batch_prev_pred, batch_cur_pred)
+                else:
+                    if kl_loss_opt:
+                        loss_KL = js_loss_op(batch_prev_pred.detach(), batch_cur_pred)
+                    else:
+                        loss_KL = js_loss_op(batch_prev_pred, batch_cur_pred.detach())
+                loss_H = h_loss_op(batch_pred)
+
+                total_loss = loss_XE + args.kl * loss_KL + args.h * loss_H
+
                 optimizer.zero_grad()
-                loss.backward()
+                total_loss.backward()
 
                 # Calculate computing time
                 compute_end = time.time()
@@ -129,7 +147,7 @@ def run(args, device, data):
                 mean_step_time = np.mean(step_time[-args.log_every :])
                 print(
                     f"Part {org_g.rank()} | Epoch {epoch:05d} | Step {step:05d}"
-                    f" | Loss {loss.item():.4f} | Train Acc {acc.item():.4f}"
+                    f" | Loss {total_loss.item():.4f} | Train Acc {acc.item():.4f}"
                     f" | Speed (samples/sec) {sample_speed:.4f}"
                     f" | GPU {gpu_mem_alloc:.1f} MB | "
                     f"Mean step time {mean_step_time:.3f} s"
