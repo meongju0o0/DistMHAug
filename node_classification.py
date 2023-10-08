@@ -9,12 +9,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from evaluation import compute_acc, evaluate
-from model import DistSAGE
-from loss import HLoss, XeLoss, Jensen_Shannon
+from training.evaluation import compute_acc, evaluate
+from training.model import DistSAGE
+from training.loss import HLoss, XeLoss, Jensen_Shannon
 
-from ..augmentation.augmentation import mh_aug
-from ..common.create_batch import AugDataLoader
+from mh_aug import mh_aug
+from common.create_batch import AugDataLoader
 
 
 def run(args, device, data):

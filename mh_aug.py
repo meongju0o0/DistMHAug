@@ -6,10 +6,10 @@ import numpy as np
 from scipy.stats import truncnorm
 from scipy.special import betaln
 
-from drop import MHEdgeDropping, MHNodeDropping
-from ..training.loss import HLoss
-from ..training.model import SimpleAGG
-from ..common.calc import log_normal
+from augmentation.drop import MHEdgeDropping, MHNodeDropping
+from training.loss import HLoss
+from training.model import SimpleAGG
+from common.calc import log_normal
 
 
 def aggregate(g, agg_model):
