@@ -1,5 +1,6 @@
 import torch as th
 
+
 def evaluate(model, g, inputs, labels, val_nid, test_nid, batch_size, device):
     """
     Evaluate the model on the validation and test set.
@@ -36,6 +37,7 @@ def evaluate(model, g, inputs, labels, val_nid, test_nid, batch_size, device):
         pred = model.inference(g, inputs, batch_size, device)
     model.train()
     return compute_acc(pred[val_nid], labels[val_nid]), compute_acc(pred[test_nid], labels[test_nid])
+
 
 def compute_acc(pred, labels):
     """

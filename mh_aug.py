@@ -17,10 +17,12 @@ def aggregate(g, agg_model):
     s_vec = agg_model(g)
     return s_vec
 
+
 def drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug):
     aug_g = MHEdgeDropping(org_g, delta_g_e_aug)
     aug_g = MHNodeDropping(aug_g, delta_g_v_aug)
     return aug_g
+
 
 @th.no_grad()
 def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
@@ -72,18 +74,21 @@ def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     delta_g_aug_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
 
     p = (args.lam1_e * log_normal(delta_g_e_, args.mu_e, args.a_e * ent_mean + args.b_e) +
-        args.lam1_v * log_normal(delta_g_v_, args.mu_v, args.a_v * ent_mean + args.b_v))
+         args.lam1_v * log_normal(delta_g_v_, args.mu_v, args.a_v * ent_mean + args.b_v))
     p_aug = (args.lam1_e * log_normal(delta_g_aug_e_, args.mu_e, args.a_e * ent_mean + args.b_e) +
-            args.lam1_v * log_normal(delta_g_aug_v_, args.mu_v, args.a_v * ent_mean + args.b_v))
+             args.lam1_v * log_normal(delta_g_aug_v_, args.mu_v, args.a_v * ent_mean + args.b_v))
 
     q = (np.log(truncnorm.pdf(delta_g_e, 0, 1, loc=delta_g_e_aug, scale=args.sigma_delta_e)) +
-        args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e+1, org_g.num_edges() * delta_g_e+1) +
-        np.log(truncnorm.pdf(delta_g_v, 0, 1, loc=delta_g_v_aug, scale=args.sigma_delta_v)) +
-        args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v+1, org_g.num_nodes() * delta_g_v+1))
+         args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e + 1,
+                              org_g.num_edges() * delta_g_e + 1) +
+         np.log(truncnorm.pdf(delta_g_v, 0, 1, loc=delta_g_v_aug, scale=args.sigma_delta_v)) +
+         args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v + 1, org_g.num_nodes() * delta_g_v + 1))
     q_aug = (np.log(truncnorm.pdf(delta_g_e_aug, 0, 1, loc=delta_g_e, scale=args.sigma_delta_e)) +
-             args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e_aug+1, org_g.num_edges() * delta_g_e_aug+1) +
+             args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e_aug + 1,
+                                  org_g.num_edges() * delta_g_e_aug + 1) +
              np.log(truncnorm.pdf(delta_g_v_aug, 0, 1, loc=delta_g_v, scale=args.sigma_delta_v)) +
-             args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v_aug+1, org_g.num_nodes() * delta_g_v_aug+1))
+             args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v_aug + 1,
+                                  org_g.num_nodes() * delta_g_v_aug + 1))
 
     acceptance = ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
 

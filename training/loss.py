@@ -1,9 +1,11 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Loss(nn.Module):
     def __init__(self):
         super(Loss, self).__init__()
+
 
 class HLoss(Loss):
     """
@@ -67,13 +69,13 @@ class XeLoss(Loss):
         return b
 
 
-class Jensen_Shannon(Loss):
+class JensenShannon(Loss):
     """
     Symmetrical KL Divergence
     """
 
     def __init__(self):
-        super(Jensen_Shannon, self).__init__()
+        super(JensenShannon, self).__init__()
 
     @staticmethod
     def forward(pred, label):

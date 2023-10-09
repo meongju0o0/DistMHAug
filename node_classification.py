@@ -11,10 +11,11 @@ import torch.optim as optim
 
 from training.evaluation import compute_acc, evaluate
 from training.model import DistSAGE
-from training.loss import HLoss, XeLoss, Jensen_Shannon
+from training.loss import HLoss, XeLoss, JensenShannon
 
 from mh_aug import mh_aug
 from common.create_batch import AugDataLoader
+from common.config import CONFIG
 
 
 def run(args, device, data):
@@ -57,7 +58,7 @@ def run(args, device, data):
     hard_xe_loss_op = nn.CrossEntropyLoss()
     soft_xe_loss_op = XeLoss()
     h_loss_op = HLoss()
-    js_loss_op = Jensen_Shannon()
+    js_loss_op = JensenShannon()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
 
     # Training loop.
@@ -257,7 +258,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Distributed GraphSAGE.")
+    parser = argparse.ArgumentParser(description="Distributed GraphSAGE")
     parser.add_argument("--graph_name", type=str,
         help="graph name")
     parser.add_argument("--ip_config", type=str,
@@ -279,10 +280,12 @@ if __name__ == "__main__":
     parser.add_argument("--log_every", type=int, default=20)
     parser.add_argument("--eval_every", type=int, default=5)
     parser.add_argument("--lr", type=float, default=0.003)
+    parser.add_argument("--decay", type=float, default=0.0005)
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--local_rank", type=int, help="get rank of the process")
     parser.add_argument("--pad-data", default=False, action="store_true",
         help="Pad train nid to the same length across machine, to ensure num of batches to be the same.")
+    args = argparse.Namespace(**CONFIG)
     args = parser.parse_args()
     print(f"Arguments: {args}")
     main(args)
