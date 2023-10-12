@@ -14,11 +14,12 @@ from training.model import DistSAGE
 from training.loss import HLoss, XeLoss, JensenShannon
 
 from mh_aug import mh_aug
+from common.set_graph import SetGraph
 from common.create_batch import AugDataLoader
 from common.config import CONFIG
 
 
-def run(args, device, data):
+def run(args, device, org_data, prev_data, cur_data):
     """
     Train and evaluate DistSAGE.
 
@@ -33,9 +34,13 @@ def run(args, device, data):
         number of classes, graph.
     """
     # Initial var declare and copy for augmentation training
-    train_nid, val_nid, test_nid, in_feats, n_classes, org_g = data
+    train_nid, val_nid, test_nid, in_feats, n_classes, org_g = org_data
+    _, _, _, _, _, prev_g = prev_data
+    _, _, _, _, _, cur_g = cur_data
+
     org_g.ndata["ones"] = th.ones(org_g.num_nodes())
-    cur_g = org_g
+    prev_g.ndata["ones"] = th.ones(prev_g.num_nodes())
+    cur_g.ndata["ones"] = th.ones(cur_g.num_nodes())
 
     # Declare dataloader
     sampler = dgl.dataloading.NeighborSampler([int(fanout) for fanout in args.fan_out.split(",")])
@@ -194,62 +199,25 @@ def main(args):
     print(f"{host_name}: Initializing PyTorch process group.")
     th.distributed.init_process_group(backend=args.backend)
     print(f"{host_name}: Initializing DistGraph.")
-    g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
-    print(f"Rank of {host_name}: {g.rank()}")
+    org_g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
+    prev_g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
+    cur_g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
+    print(f"Rank of {host_name}: {org_g.rank()}")
 
-    # Split train/val/test IDs for each trainer.
-    pb = g.get_partition_book()
-    if "trainer_id" in g.ndata:
-        train_nid = dgl.distributed.node_split(
-            g.ndata["train_mask"],
-            pb,
-            force_even=True,
-            node_trainer_ids=g.ndata["trainer_id"],
-        )
-        val_nid = dgl.distributed.node_split(
-            g.ndata["val_mask"],
-            pb,
-            force_even=True,
-            node_trainer_ids=g.ndata["trainer_id"],
-        )
-        test_nid = dgl.distributed.node_split(
-            g.ndata["test_mask"],
-            pb,
-            force_even=True,
-            node_trainer_ids=g.ndata["trainer_id"],
-        )
-    else:
-        train_nid = dgl.distributed.node_split(g.ndata["train_mask"], pb, force_even=True)
-        val_nid = dgl.distributed.node_split(g.ndata["val_mask"], pb, force_even=True)
-        test_nid = dgl.distributed.node_split(g.ndata["test_mask"], pb, force_even=True)
-    local_nid = pb.partid2nids(pb.partid).detach().numpy()
-    num_train_local = len(np.intersect1d(train_nid.numpy(), local_nid))
-    num_val_local = len(np.intersect1d(val_nid.numpy(), local_nid))
-    num_test_local = len(np.intersect1d(test_nid.numpy(), local_nid))
-    print(
-        f"part {g.rank()}, train: {len(train_nid)} (local: {num_train_local}), "
-        f"val: {len(val_nid)} (local: {num_val_local}), "
-        f"test: {len(test_nid)} (local: {num_test_local})"
-    )
-    del local_nid
     if args.num_gpus == 0:
         device = th.device("cpu")
     else:
-        dev_id = g.rank() % args.num_gpus
+        dev_id = org_g.rank() % args.num_gpus
         device = th.device("cuda:" + str(dev_id))
-    n_classes = args.n_classes
-    if n_classes == 0:
-        labels = g.ndata["labels"][np.arange(g.num_nodes())]
-        n_classes = len(th.unique(labels[th.logical_not(th.isnan(labels))]))
-        del labels
-    print(f"Number of classes: {n_classes}")
 
-    # Pack data.
-    in_feats = g.ndata["features"].shape[1]
-    data = train_nid, val_nid, test_nid, in_feats, n_classes, g
+    # Get data.
+    org_data = SetGraph(org_g, args)
+    prev_data = SetGraph(prev_g, args)
+    cur_data = SetGraph(cur_g, args)
 
     # Train and evaluate.
-    epoch_time, test_acc = run(args, device, data)
+    epoch_time, test_acc = run(args, device, org_data, prev_data, cur_data)
+
     print(
         f"Summary of node classification(GraphSAGE): GraphName "
         f"{args.graph_name} | TrainEpochTime(mean) {epoch_time:.4f} "
@@ -271,6 +239,7 @@ if __name__ == "__main__":
         help="pytorch distributed backend")
     parser.add_argument("--num_gpus", type=int, default=0,
         help="the number of GPU device. Use 0 for CPU training")
+
     parser.add_argument("--num_epochs", type=int, default=20)
     parser.add_argument("--num_hidden", type=int, default=16)
     parser.add_argument("--num_layers", type=int, default=2)
@@ -285,7 +254,11 @@ if __name__ == "__main__":
     parser.add_argument("--local_rank", type=int, help="get rank of the process")
     parser.add_argument("--pad-data", default=False, action="store_true",
         help="Pad train nid to the same length across machine, to ensure num of batches to be the same.")
-    args = argparse.Namespace(**CONFIG)
     args = parser.parse_args()
+
+    for key, value in CONFIG.items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
+
     print(f"Arguments: {args}")
     main(args)

@@ -18,21 +18,25 @@ def aggregate(g, agg_model):
     return s_vec
 
 
-def drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug):
-    aug_g = MHEdgeDropping(org_g, delta_g_e_aug)
-    aug_g = MHNodeDropping(aug_g, delta_g_v_aug)
+def drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device):
+    aug_g = MHEdgeDropping(org_g, delta_g_e_aug, device)
+    aug_g = MHNodeDropping(aug_g, delta_g_v_aug, device)
     return aug_g
 
 
 @th.no_grad()
 def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
+    # Get only local partitioned graph
+    print(org_g)
+    exit(100)
+
     delta_g_e = 1 - prev_aug_g.num_edges() / org_g.num_edges()
-    delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, sigma=args.sigma_delta_e)
+    delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, scale=args.sigma_delta_e)
 
     delta_g_v = 1 - prev_aug_g.num_nodes() / org_g.num_nodes()
-    delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, sigma=args.sigma_delta_v)
+    delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, scale=args.sigma_delta_v)
 
-    cur_aug_g = drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug)
+    cur_aug_g = drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device)
 
     agg_model = SimpleAGG
     h_loss = HLoss()
