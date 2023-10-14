@@ -16,9 +16,7 @@ class SimpleAGG(nn.Module):
         Depth of Aggregation
     """
 
-    def __init__(
-            self, num_hop, in_feats = 1, n_classes = 1, dropout = 0
-    ):
+    def __init__(self, num_hop, in_feats=1, n_classes=1, dropout=0):
         super().__init__()
         self.layers = nn.ModuleList()
 

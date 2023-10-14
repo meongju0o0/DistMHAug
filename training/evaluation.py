@@ -26,10 +26,9 @@ def evaluate(model, g, inputs, labels, val_nid, test_nid, batch_size, device):
 
     Returns
     -------
-    float
-        Validation accuracy.
-    float
-        Test accuracy.
+    Validation accuracy : float
+
+    Test accuracy : float
     """
 
     model.eval()
