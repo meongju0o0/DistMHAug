@@ -16,30 +16,26 @@ def mh_drop(org_g, delta_g_e, delta_g_v, aug_g, device):
 
 
 class MHDropping:
-    def __init__(self, org_g, delta_g_e, delta_g_v, aug_g, device):
-        self.temp = org_g.local_partition.cpu() # Returns only local partition to cpu
+    def __init__(self, g, delta_g_e, delta_g_v):
+        self.g = g.local_partition.cpu() # Returns only local partition and copy to cpu
         self.drop_edge = dgl.transforms.DropEdge(delta_g_e)
         self.drop_node = dgl.transforms.FeatMask(delta_g_v, node_feat_names=["features"])
-
-    def __call__(self):
-        self.drop_edge(self.temp)
-        self.drop_node(self.temp)
 
 
 class MHEdgeDropping(MHDropping):
-    def __init__(self, org_g, delta_g_e, device):
-        super().__init__(org_g, device)
+    def __init__(self, org_g, delta_g_e, delta_g_v):
+        super().__init__(org_g, delta_g_e, delta_g_v)
         self.drop_edge = dgl.transforms.DropEdge(delta_g_e)
 
     def __call__(self):
-        self.drop_edge(self.temp)
-        return self.drop_edge(self.aug_g)
+        self.drop_edge(self.g)
+        return self.drop_edge(self.g)
 
 
 class MHNodeDropping(MHDropping):
-    def __init__(self, org_g, delta_g_v, device):
-        super().__init__(org_g, device)
+    def __init__(self, org_g, delta_g_e, delta_g_v):
+        super().__init__(org_g, delta_g_e, delta_g_v)
         self.drop_node = dgl.transforms.FeatMask(delta_g_v, node_feat_names=["features"])
 
     def __call__(self):
-        return self.drop_node(self.aug_g)
+        return self.drop_node(self.g)

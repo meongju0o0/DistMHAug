@@ -6,6 +6,7 @@ import torch as th
 from dgl.data import RedditDataset
 from ogb.nodeproppred import DglNodePropPredDataset
 
+
 def load_reddit(self_loop=True):
     """Load reddit dataset."""
     data = RedditDataset(self_loop=self_loop)
