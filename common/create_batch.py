@@ -2,13 +2,12 @@ import dgl
 
 
 class AugDataLoader:
-    def __init__(self, org_g, train_nid, sampler, batch_size, shuffle=True, drop_last=False):
-        self.org_g = org_g
-        self.prev_g = None
-        self.cur_g = None
+    def __init__(self, g, train_nid, args, batch_size, shuffle=True, drop_last=False):
+        self.g = g
 
+        sampler = dgl.dataloading.NeighborSampler([int(fanout) for fanout in args.fan_out.split(",")])
         self.dataloader = dgl.dataloading.DistNodeDataLoader(
-            org_g, train_nid, sampler, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
+            g, train_nid, sampler, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
 
         self.src_nodes_list = []
         self.dst_nodes_list = []

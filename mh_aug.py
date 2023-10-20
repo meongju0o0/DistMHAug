@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import truncnorm
 from scipy.special import betaln
 
-from augmentation.drop import MHEdgeDropping, MHNodeDropping
+from augmentation.drop import MHMasking
 from training.loss import HLoss
 from training.model import SimpleAGG
 from common.calc import log_normal
@@ -18,17 +18,14 @@ def aggregate(g, agg_model):
     return s_vec
 
 
-def drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device):
-    aug_g = MHEdgeDropping(org_g, delta_g_e_aug, device)
-    aug_g = MHNodeDropping(aug_g, delta_g_v_aug, device)
+def mask_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device):
+    aug_g = MHMasking(org_g, delta_g_e_aug, delta_g_v_aug, device)
     return aug_g
 
 
 @th.no_grad()
 def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     # Get only local partitioned graph
-    print(org_g)
-    exit(100)
 
     delta_g_e = 1 - prev_aug_g.num_edges() / org_g.num_edges()
     delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, scale=args.sigma_delta_e)
@@ -36,7 +33,7 @@ def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     delta_g_v = 1 - prev_aug_g.num_nodes() / org_g.num_nodes()
     delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, scale=args.sigma_delta_v)
 
-    cur_aug_g = drop_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device)
+    cur_aug_g = mask_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device)
 
     agg_model = SimpleAGG
     h_loss = HLoss()

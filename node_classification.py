@@ -19,7 +19,7 @@ from common.create_batch import AugDataLoader
 from common.config import CONFIG
 
 
-def run(args, device, org_data, prev_data, cur_data):
+def run(args, device, data):
     """
     Train and evaluate DistSAGE.
 
@@ -34,17 +34,17 @@ def run(args, device, org_data, prev_data, cur_data):
         number of classes, graph.
     """
     # Initial var declare and copy for augmentation training
-    train_nid, val_nid, test_nid, in_feats, n_classes, org_g = org_data
-    _, _, _, _, _, prev_g = prev_data
-    _, _, _, _, _, cur_g = cur_data
+    train_nid, val_nid, test_nid, in_feats, n_classes, g = data
 
-    org_g.ndata["ones"] = th.ones(org_g.num_nodes())
-    prev_g.ndata["ones"] = th.ones(prev_g.num_nodes())
-    cur_g.ndata["ones"] = th.ones(cur_g.num_nodes())
+    g.ndata["ones"] = th.ones(g.num_nodes())
+
+    g.ndata["prev_namsk"] = th.ones(g.num_nodes())
+    g.ndata["cur_namsk"] = th.ones(g.num_nodes())
+    g.edata["prev_emask"] = th.ones(g.num_edges())
+    g.edata["cur_emask"] = th.ones(g.num_edges())
 
     # Declare dataloader
-    sampler = dgl.dataloading.NeighborSampler([int(fanout) for fanout in args.fan_out.split(",")])
-    dataloader = AugDataLoader(org_g, train_nid, sampler, batch_size=args.batch_size, shuffle=True, drop_last=False)
+    dataloader = AugDataLoader(g, train_nid, args, batch_size=args.batch_size, shuffle=True, drop_last=False)
 
     # Declare Training Methods
     model = DistSAGE(
@@ -85,10 +85,9 @@ def run(args, device, org_data, prev_data, cur_data):
         step_time = []
 
         with (model.join()):
-            prev_g = cur_g
-            cur_g, kl_loss_opt = mh_aug(args, org_g, prev_g, model, dataloader, device)
+            cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
             for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in \
-                enumerate(dataloader.__iter__(prev_g, cur_g)):
+                enumerate(dataloader.__iter__(g)):
                 # input_nodes: src nodes, i.e. whole nodes
                 # seeds: dst nodes
                 # blocks: Message Flow Graph
@@ -98,8 +97,8 @@ def run(args, device, org_data, prev_data, cur_data):
                 sample_time += tic_step - start
 
                 # Slice feature and label.
-                batch_inputs = org_g.ndata["features"][input_nodes]
-                batch_labels = org_g.ndata["labels"][seeds].long()
+                batch_inputs = g.ndata["features"][input_nodes]
+                batch_labels = g.ndata["labels"][seeds].long()
                 num_seeds += len(blocks[-1].dstdata[dgl.NID])
                 num_inputs += len(blocks[0].srcdata[dgl.NID])
 
@@ -152,7 +151,7 @@ def run(args, device, org_data, prev_data, cur_data):
                 sample_speed = np.mean(iter_tput[-args.log_every :])
                 mean_step_time = np.mean(step_time[-args.log_every :])
                 print(
-                    f"Part {org_g.rank()} | Epoch {epoch:05d} | Step {step:05d}"
+                    f"Part {g.rank()} | Epoch {epoch:05d} | Step {step:05d}"
                     f" | Loss {total_loss.item():.4f} | Train Acc {acc.item():.4f}"
                     f" | Speed (samples/sec) {sample_speed:.4f}"
                     f" | GPU {gpu_mem_alloc:.1f} MB | "
@@ -162,7 +161,7 @@ def run(args, device, org_data, prev_data, cur_data):
 
         toc = time.time()
         print(
-            f"Part {org_g.rank()}, Epoch Time(s): {toc - tic:.4f}, "
+            f"Part {g.rank()}, Epoch Time(s): {toc - tic:.4f}, "
             f"sample+data_copy: {sample_time:.4f}, forward: {forward_time:.4f},"
             f" backward: {backward_time:.4f}, update: {update_time:.4f}, "
             f"#seeds: {num_seeds}, #inputs: {num_inputs}"
@@ -173,16 +172,16 @@ def run(args, device, org_data, prev_data, cur_data):
             start = time.time()
             val_acc, test_acc = evaluate(
                 model.module,
-                org_g,
-                org_g.ndata["features"],
-                org_g.ndata["labels"],
+                g,
+                g.ndata["features"],
+                g.ndata["labels"],
                 val_nid,
                 test_nid,
                 args.batch_size_eval,
                 device,
             )
             print(
-                f"Part {org_g.rank()}, Val Acc {val_acc:.4f}, "
+                f"Part {g.rank()}, Val Acc {val_acc:.4f}, "
                 f"Test Acc {test_acc:.4f}, time: {time.time() - start:.4f}"
             )
 
@@ -199,24 +198,20 @@ def main(args):
     print(f"{host_name}: Initializing PyTorch process group.")
     th.distributed.init_process_group(backend=args.backend)
     print(f"{host_name}: Initializing DistGraph.")
-    org_g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
-    prev_g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
-    cur_g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
-    print(f"Rank of {host_name}: {org_g.rank()}")
+    g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
+    print(f"Rank of {host_name}: {g.rank()}")
 
     if args.num_gpus == 0:
         device = th.device("cpu")
     else:
-        dev_id = org_g.rank() % args.num_gpus
+        dev_id = g.rank() % args.num_gpus
         device = th.device("cuda:" + str(dev_id))
 
     # Get data.
-    org_data = SetGraph(org_g, args)
-    prev_data = SetGraph(prev_g, args)
-    cur_data = SetGraph(cur_g, args)
+    data = SetGraph(g, args).__call__()
 
     # Train and evaluate.
-    epoch_time, test_acc = run(args, device, org_data, prev_data, cur_data)
+    epoch_time, test_acc = run(args, device, data)
 
     print(
         f"Summary of node classification(GraphSAGE): GraphName "
