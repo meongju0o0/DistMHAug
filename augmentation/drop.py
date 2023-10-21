@@ -2,11 +2,11 @@ import dgl
 
 
 class MHMasking:
-    def __init__(self, org_g, delta_g_e, delta_g_v, device):
+    def __init__(self, g, delta_g_e, delta_g_v, device):
+        self.g = g
         self.delta_g_e = delta_g_e
         self.delta_g_v = delta_g_v
         self.device = device
-        self.local_aug_g = org_g.local_partition.cpu()  # Returns only local partition and copy to cpu
 
     def __call__(self):
         self.local_aug_g = self._mh_edge_dropping()
