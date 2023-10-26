@@ -38,8 +38,8 @@ def run(args, device, data):
 
     g.ndata["ones"] = th.ones(g.num_nodes())
 
-    g.ndata["prev_namsk"] = th.ones(g.num_nodes())
-    g.ndata["cur_namsk"] = th.ones(g.num_nodes())
+    g.ndata["prev_nmask"] = th.ones(g.num_nodes())
+    g.ndata["cur_nmask"] = th.ones(g.num_nodes())
     g.edata["prev_emask"] = th.ones(g.num_edges())
     g.edata["cur_emask"] = th.ones(g.num_edges())
 
