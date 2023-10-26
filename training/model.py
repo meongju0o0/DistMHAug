@@ -33,6 +33,24 @@ class SimpleAGG(nn.Module):
         for layer in self.layers:
             nn.init.ones_(layer.weight)
 
+    def forward(self, blocks, x):
+        """
+        Forward function.
+
+        Parameters
+        ----------
+        blocks : List[DGLBlock]
+            Sampled blocks.
+        x : DistTensor
+            Feature data.
+        """
+        h = x
+        for i, (layer, block) in enumerate(zip(self.layers, blocks)):
+            h = layer(block, h)
+            if i != len(self.layers) - 1:
+                h = self.dropout(h)
+        return h
+
     def forward(self, graph):
         """
         Forward function

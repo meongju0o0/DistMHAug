@@ -12,28 +12,28 @@ from training.model import SimpleAGG
 from common.calc import log_normal
 
 
-def aggregate(g, agg_model):
-    g = dgl.add_self_loop(g)
-    s_vec = agg_model(g)
+def aggregate(block, agg_model, x):
+    s_vec = agg_model(block, x)
     return s_vec
 
 
-def mask_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device):
-    aug_g = MHMasking(org_g, delta_g_e_aug, delta_g_v_aug, device)
-    return aug_g
-
-
 @th.no_grad()
-def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
+def mh_aug(args, g, model, dataloader, device):
     # Get only local partitioned graph
 
-    delta_g_e = 1 - prev_aug_g.num_edges() / org_g.num_edges()
+    org_num_edges = g.num_edges()
+    prev_num_edges = g.edata["prev_emask"].sum()
+
+    org_num_nodes = g.num_nodes()
+    prev_num_nodes = g.ndata["prev_nmask"].sum()
+
+    delta_g_e = 1 - prev_num_edges / org_num_edges
     delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, scale=args.sigma_delta_e)
 
-    delta_g_v = 1 - prev_aug_g.num_nodes() / org_g.num_nodes()
+    delta_g_v = 1 - prev_num_nodes / org_num_nodes
     delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, scale=args.sigma_delta_v)
 
-    cur_aug_g = mask_node_edge(org_g, delta_g_e_aug, delta_g_v_aug, device)
+    MHMasking(g, delta_g_e_aug, delta_g_v_aug, device)
 
     agg_model = SimpleAGG
     h_loss = HLoss()
@@ -45,58 +45,69 @@ def mh_aug(args, org_g, prev_aug_g, model, dataloader, device):
     batch_cnt = 0
     ent_sum = 0
 
-    for step, (input_nodes, seeds, blocks) in enumerate(dataloader):
+    org_ego_sum = 0
+    delta_g_e_sum_ = 0
+    delta_g_aug_e_sum_ = 0
+    delta_g_v_sum_ = 0
+    delta_g_aug_v_sum_ = 0
+
+    for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in enumerate(dataloader):
         batch_cnt += 1
 
         # Slice feature and label.
-        batch_inputs = org_g.ndata["features"][input_nodes]
-        batch_labels = org_g.ndata["labels"][seeds].long()
-        num_seeds += len(blocks[-1].dstdata[dgl.NID])
-        num_inputs += len(blocks[0].srcdata[dgl.NID])
+        batch_inputs = g.ndata["features"][input_nodes]
+        num_seeds += len(org_blocks[-1].dstdata[dgl.NID])
+        num_inputs += len(org_blocks[0].srcdata[dgl.NID])
 
         # Move to target device.
-        blocks = [block.to(device) for block in blocks]
+        org_blocks = [block.to(device) for block in org_blocks]
         batch_inputs = batch_inputs.to(device)
-        batch_labels = batch_labels.to(device)
 
         # Get prediction to calculate ent.
-        batch_pred = model(blocks, batch_inputs)
+        batch_pred = model(org_blocks, batch_inputs)
 
         max_ent = h_loss(th.full((1, batch_pred.shape[1]), 1 / batch_pred.shape[1])).item()
         ent = h_loss(batch_pred.detach(), True) / max_ent
         ent_sum += ent
 
+        batch_org_ego = aggregate(org_blocks, agg_model, g.ndata["org_nmask"])
+        org_ego_sum += batch_org_ego
+
+        delta_g_e_sum_ += 1 - (aggregate(cur_blocks, agg_model, g.ndata["cur_nmask"]) / batch_org_ego).squeeze(1)
+        delta_g_aug_e_sum_ += 1 - (aggregate(cur_blocks, agg_model, g.ndata["cur_nmask"]) / batch_org_ego).squeeze(1)
+        delta_g_v_sum_ += 1 - (aggregate(cur_blocks, agg_model, g.ndata["cur_nmask"]) / batch_org_ego).squeeze(1)
+        delta_g_aug_v_sum_ += 1 - (aggregate(cur_blocks, agg_model, g.ndata["cur_nmask"]) / batch_org_ego).squeeze(1)
+
     ent_mean = ent_sum / batch_cnt
-    org_ego = aggregate(org_g, agg_model)
 
-    delta_g_e_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
-    delta_g_aug_e_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
-    delta_g_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
-    delta_g_aug_v_ = 1 - (aggregate(cur_aug_g, agg_model) / org_ego).squeeze(1)
+    delta_g_e_mean_ = delta_g_e_sum_ / batch_cnt
+    delta_g_aug_e_mean_ = delta_g_aug_e_sum_ / batch_cnt
+    delta_g_v_mean_ = delta_g_v_sum_ / batch_cnt
+    delta_g_aug_v_mean_ = delta_g_aug_v_sum_ / batch_cnt
 
-    p = (args.lam1_e * log_normal(delta_g_e_, args.mu_e, args.a_e * ent_mean + args.b_e) +
-         args.lam1_v * log_normal(delta_g_v_, args.mu_v, args.a_v * ent_mean + args.b_v))
-    p_aug = (args.lam1_e * log_normal(delta_g_aug_e_, args.mu_e, args.a_e * ent_mean + args.b_e) +
-             args.lam1_v * log_normal(delta_g_aug_v_, args.mu_v, args.a_v * ent_mean + args.b_v))
+    p = (args.lam1_e * log_normal(delta_g_e_mean_, args.mu_e, args.a_e * ent_mean + args.b_e) +
+         args.lam1_v * log_normal(delta_g_v_mean_, args.mu_v, args.a_v * ent_mean + args.b_v))
+    p_aug = (args.lam1_e * log_normal(delta_g_aug_e_mean_, args.mu_e, args.a_e * ent_mean + args.b_e) +
+             args.lam1_v * log_normal(delta_g_aug_v_mean_, args.mu_v, args.a_v * ent_mean + args.b_v))
 
     q = (np.log(truncnorm.pdf(delta_g_e, 0, 1, loc=delta_g_e_aug, scale=args.sigma_delta_e)) +
-         args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e + 1,
-                              org_g.num_edges() * delta_g_e + 1) +
+         args.lam2_e * betaln(org_num_edges - org_num_edges * delta_g_e + 1,
+                              org_num_edges * delta_g_e + 1) +
          np.log(truncnorm.pdf(delta_g_v, 0, 1, loc=delta_g_v_aug, scale=args.sigma_delta_v)) +
-         args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v + 1, org_g.num_nodes() * delta_g_v + 1))
+         args.lam2_v * betaln(org_num_nodes - org_num_nodes * delta_g_v + 1, org_num_nodes * delta_g_v + 1))
     q_aug = (np.log(truncnorm.pdf(delta_g_e_aug, 0, 1, loc=delta_g_e, scale=args.sigma_delta_e)) +
-             args.lam2_e * betaln(org_g.num_edges() - org_g.num_edges() * delta_g_e_aug + 1,
-                                  org_g.num_edges() * delta_g_e_aug + 1) +
+             args.lam2_e * betaln(org_num_edges - org_num_edges * delta_g_e_aug + 1,
+                                  org_num_edges * delta_g_e_aug + 1) +
              np.log(truncnorm.pdf(delta_g_v_aug, 0, 1, loc=delta_g_v, scale=args.sigma_delta_v)) +
-             args.lam2_v * betaln(org_g.num_nodes() - org_g.num_nodes() * delta_g_v_aug + 1,
-                                  org_g.num_nodes() * delta_g_v_aug + 1))
+             args.lam2_v * betaln(org_num_nodes - org_num_nodes * delta_g_v_aug + 1,
+                                  org_num_nodes * delta_g_v_aug + 1))
 
     acceptance = ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
 
     if np.log(random.random()) < acceptance:
         if delta_g_e + delta_g_v < delta_g_e_aug + delta_g_v_aug:
-            return cur_aug_g, True
+            return g, True
         else:
-            return cur_aug_g, False
+            return g, False
     else:
         return None

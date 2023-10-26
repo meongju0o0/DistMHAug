@@ -36,12 +36,17 @@ def run(args, device, data):
     # Initial var declare and copy for augmentation training
     train_nid, val_nid, test_nid, in_feats, n_classes, g = data
 
-    g.ndata["ones"] = th.ones(g.num_nodes())
+    num_nodes = g.num_nodes()
 
-    g.ndata["prev_nmask"] = th.ones(g.num_nodes())
-    g.ndata["cur_nmask"] = th.ones(g.num_nodes())
-    g.edata["prev_emask"] = th.ones(g.num_edges())
-    g.edata["cur_emask"] = th.ones(g.num_edges())
+    g.ndata["ones"] = th.ones(num_nodes)
+
+    g.ndata["org_nmask"] = th.ones(num_nodes)
+    g.ndata["prev_nmask"] = th.ones(num_nodes)
+    g.ndata["cur_nmask"] = th.ones(num_nodes)
+
+    g.edata["org_emask"] = th.ones(num_nodes)
+    g.edata["prev_emask"] = th.ones(num_nodes)
+    g.edata["cur_emask"] = th.ones(num_nodes)
 
     # Declare dataloader
     dataloader = AugDataLoader(g, train_nid, args, batch_size=args.batch_size, shuffle=True, drop_last=False)
@@ -84,10 +89,9 @@ def run(args, device, data):
         start = time.time()
         step_time = []
 
-        with (model.join()):
+        with model.join():
             cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
-            for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in \
-                enumerate(dataloader.__iter__(g)):
+            for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in enumerate(dataloader):
                 # input_nodes: src nodes, i.e. whole nodes
                 # seeds: dst nodes
                 # blocks: Message Flow Graph
