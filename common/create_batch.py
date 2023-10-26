@@ -1,3 +1,4 @@
+import torch as th
 import dgl
 
 
@@ -16,12 +17,11 @@ class AugDataLoader:
         self.limit = 0
         self.idx = 0
 
-    def __iter__(self, prev_g, cur_g):
+    def __iter__(self, g):
         self.limit = 0
         self.idx = 0
 
-        self.prev_g = prev_g
-        self.cur_g = cur_g
+        self.g = g
 
         for src_nodes, dst_nodes, blocks in self.dataloader:
             self.limit += 1
@@ -29,11 +29,13 @@ class AugDataLoader:
             self.src_nodes_list.append(src_nodes)
             self.dst_nodes_list.append(dst_nodes)
 
+            print(src_nodes)
+
             self.blocks["org_blocks"].append(blocks)
             self.blocks["prev_blocks"].append(
-                dgl.to_block(self.prev_g, dst_nodes=dst_nodes, src_nodes=src_nodes, include_dst_in_src=True))
+                dgl.to_block(self.g, dst_nodes=dst_nodes, src_nodes=src_nodes, include_dst_in_src=True))
             self.blocks["cur_blocks"].append(
-                dgl.to_block(self.cur_g, dst_nodes=dst_nodes, src_nodes=src_nodes, include_dst_in_src=True))
+                dgl.to_block(self.g, dst_nodes=dst_nodes, src_nodes=src_nodes, include_dst_in_src=True))
 
         return self
 
