@@ -1,5 +1,7 @@
-import dgl
+import gc
 
+import dgl
+import torch as th
 
 class AugDataLoader:
     def __init__(self, g, train_nid, args, batch_size, shuffle=False, drop_last=False):
@@ -46,6 +48,10 @@ class AugDataLoader:
                 self.src_nodes_list["cur_src_nodes"].append(src_nodes)
                 self.dst_nodes_list["cur_dst_nodes"].append(dst_nodes)
                 self.blocks["cur_blocks"].append(blocks)
+
+            gc.collect(0)
+            print("****************")
+            print(self.limit)
 
         return self
 
