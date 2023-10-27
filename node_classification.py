@@ -15,8 +15,12 @@ from training.loss import HLoss, XeLoss, JensenShannon
 
 from mh_aug import mh_aug
 from common.set_graph import SetGraph
-from common.create_batch import AugDataLoader
+from common.load_batch import AugDataLoader
 from common.config import CONFIG
+
+
+def init(shape, dtype):
+    return th.ones(size=shape, dtype=dtype)
 
 
 def run(args, device, data):
@@ -36,17 +40,19 @@ def run(args, device, data):
     # Initial var declare and copy for augmentation training
     train_nid, val_nid, test_nid, in_feats, n_classes, g = data
 
+    num_edges = g.num_edges()
     num_nodes = g.num_nodes()
 
-    g.ndata["ones"] = th.ones(num_nodes)
+    # mpv: message passing value
+    g.ndata["ones"] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='mpv', init_func=init)
 
-    g.ndata["org_nmask"] = th.ones(num_nodes)
-    g.ndata["prev_nmask"] = th.ones(num_nodes)
-    g.ndata["cur_nmask"] = th.ones(num_nodes)
+    g.edata['org_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32, name='org_emask', init_func=init)
+    g.edata['prev_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32, name='prev_emask', init_func=init)
+    g.edata['cur_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32, name='cur_emask', init_func=init)
 
-    g.edata["org_emask"] = th.ones(num_nodes)
-    g.edata["prev_emask"] = th.ones(num_nodes)
-    g.edata["cur_emask"] = th.ones(num_nodes)
+    g.ndata['org_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='org_nmask', init_func=init)
+    g.ndata['prev_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='prev_nmask', init_func=init)
+    g.ndata['cur_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='cur_nmask', init_func=init)
 
     # Declare dataloader
     dataloader = AugDataLoader(g, train_nid, args, batch_size=args.batch_size, shuffle=True, drop_last=False)

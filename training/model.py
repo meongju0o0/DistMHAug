@@ -1,9 +1,65 @@
 import dgl
 import dgl.nn.pytorch as dglnn
+import dgl.function as fn
 import numpy as np
 import torch as th
 import torch.nn as nn
 import tqdm
+
+
+class SAGEConvSUM(dglnn.SAGEConv):
+    def __init__(self, in_feats, n_classes):
+        super().__init__(in_feats, n_classes,
+                         aggregator_type="mean", feat_drop=0, bias=False, norm=None, activation=None)
+        self._aggre_type = "sum"
+
+
+    def reset_parameters(self):
+        """
+        Reset weight parameters as a one
+        """
+        nn.init.ones_(self.fc_neigh.weight)
+
+
+    def forward(self, graph, feat, edge_weight=None):
+        with graph.local_scope():
+            if isinstance(feat, tuple):
+                feat_src = self.feat_drop(feat[0])
+                feat_dst = self.feat_drop(feat[1])
+            else:
+                feat_src = feat_dst = self.feat_drop(feat)
+                if graph.is_block:
+                    feat_dst = feat_src[: graph.number_of_dst_nodes()]
+            msg_fn = fn.copy_u("h", "m")
+            if edge_weight is not None:
+                assert edge_weight.shape[0] == graph.num_edges()
+                graph.edata["_edge_weight"] = edge_weight
+                msg_fn = fn.u_mul_e("h", "_edge_weight", "m")
+
+            h_self = feat_dst
+
+            # Handle the case of graphs without edges
+            if graph.num_edges() == 0:
+                graph.dstdata["neigh"] = th.zeros(
+                    feat_dst.shape[0], self._in_src_feats
+                ).to(feat_dst)
+
+            # Determine whether to apply linear transformation before message passing A(XW)
+            lin_before_mp = self._in_src_feats > self._out_feats
+
+            # Message Passing
+            if self._aggre_type == "sum":
+                graph.srcdata["h"] = (
+                    self.fc_neigh(feat_src) if lin_before_mp else feat_src
+                )
+                graph.update_all(msg_fn, fn.sum("m", "neigh"))
+                h_neigh = graph.dstdata["neigh"]
+                if not lin_before_mp:
+                    h_neigh = self.fc_neigh(h_neigh)
+
+        rst = self.fc_self(h_self) + h_neigh
+
+        return rst
 
 
 class SimpleAGG(nn.Module):
@@ -21,17 +77,10 @@ class SimpleAGG(nn.Module):
         self.layers = nn.ModuleList()
 
         for _ in range(num_hop):
-            self.layers.append(dglnn.SAGEConv(in_feats, n_classes, aggregator_type="add", feat_drop=0, bias=False))
+            self.layers.append(SAGEConvSUM(in_feats, n_classes))
 
         self.dropout = nn.Dropout(dropout)
-        self.reset_parameters()
 
-    def reset_parameters(self):
-        """
-        Reset weight parameters as a one
-        """
-        for layer in self.layers:
-            nn.init.ones_(layer.weight)
 
     def forward(self, blocks, x):
         """
@@ -47,26 +96,6 @@ class SimpleAGG(nn.Module):
         h = x
         for i, (layer, block) in enumerate(zip(self.layers, blocks)):
             h = layer(block, h)
-            if i != len(self.layers) - 1:
-                h = self.dropout(h)
-        return h
-
-    def forward(self, graph):
-        """
-        Forward function
-
-        Parameters
-        ----------
-        graph : DGLGraph
-            Graph to aggregate
-
-        Returns
-        -------
-        Aggregated Value
-        """
-        h = graph.ndata["one"] # one: the feature to calculate changing rate
-        for i, layer in enumerate(self.layers):
-            h = layer(graph, h)
             if i != len(self.layers) - 1:
                 h = self.dropout(h)
         return h
@@ -92,9 +121,7 @@ class DistSAGE(nn.Module):
         Dropout value.
     """
 
-    def __init__(
-        self, in_feats, n_hidden, n_classes, n_layers, activation, dropout
-    ):
+    def __init__(self, in_feats, n_hidden, n_classes, n_layers, activation, dropout):
         super().__init__()
         self.n_layers = n_layers
         self.n_hidden = n_hidden
