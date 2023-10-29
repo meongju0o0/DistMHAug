@@ -40,18 +40,21 @@ class AugDataLoader:
             org_blocks = blocks
 
             prev_dataloader = dgl.dataloading.DistNodeDataLoader(
-                self.g, src_nodes, self.samplers[1],
-                batch_size=src_nodes.size(dim=0), shuffle=False, drop_last=self.drop_last)
+                self.g, dst_nodes, self.samplers[1],
+                batch_size=dst_nodes.size(dim=0), shuffle=False, drop_last=self.drop_last)
 
             cur_dataloader = dgl.dataloading.DistNodeDataLoader(
-                self.g, src_nodes, self.samplers[2],
-                batch_size=src_nodes.size(dim=0), shuffle=False, drop_last=self.drop_last)
+                self.g, dst_nodes, self.samplers[2],
+                batch_size=dst_nodes.size(dim=0), shuffle=False, drop_last=self.drop_last)
 
             future_prev = self.executor.submit(self._load_data, prev_dataloader)
             future_cur = self.executor.submit(self._load_data, cur_dataloader)
 
-            prev_src_nodes, prev_dst_nodes, prev_blocks = future_prev.result()
-            cur_src_nodes, cur_dst_nodes, cur_blocks = future_cur.result()
+            prev_data = future_prev.result()
+            cur_data = future_cur.result()
+
+            prev_src_nodes, prev_dst_nodes, prev_blocks = prev_data[0]
+            cur_src_nodes, cur_dst_nodes, cur_blocks = cur_data[0]
 
             yield {"org": [org_src_nodes, org_dst_nodes, org_blocks],
                    "prev": [prev_src_nodes, prev_dst_nodes, prev_blocks],

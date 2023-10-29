@@ -55,7 +55,7 @@ def run(args, device, data):
     g.ndata['cur_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='cur_nmask', init_func=init)
 
     # Declare dataloader
-    dataloader = AugDataLoader(g, train_nid, args, batch_size=args.batch_size, shuffle=True, drop_last=False)
+    dataloader = AugDataLoader(g, train_nid, args, batch_size=args.batch_size, shuffle=False, drop_last=False)
 
     # Declare Training Methods
     model = DistSAGE(

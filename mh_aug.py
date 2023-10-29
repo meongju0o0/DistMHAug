@@ -21,8 +21,6 @@ def aggregate(block, agg_model, x):
 
 @th.no_grad()
 def mh_aug(args, g, model, dataloader, device):
-    # Get only local partitioned graph
-
     org_num_edges = g.local_partition.num_edges()
     org_num_nodes = g.local_partition.num_nodes()
 
@@ -55,18 +53,18 @@ def mh_aug(args, g, model, dataloader, device):
     delta_g_v_sum_ = 0
     delta_g_aug_v_sum_ = 0
 
-    for step, src_blocks in enumerate(dataloader):
+    for step, src_and_blocks in enumerate(dataloader):
         batch_cnt += 1
 
-        org = src_blocks["org"]
+        org = src_and_blocks["org"]
         org_input_nodes = org[0]
         org_blocks = org[2]
 
-        prev = src_blocks["prev"]
+        prev = src_and_blocks["prev"]
         prev_input_nodes = prev[0]
         prev_blocks = prev[2]
 
-        cur = src_blocks["cur"]
+        cur = src_and_blocks["cur"]
         cur_input_nodes = cur[0]
         cur_blocks = cur[2]
 
@@ -84,6 +82,7 @@ def mh_aug(args, g, model, dataloader, device):
 
         max_ent = h_loss(th.full((1, batch_pred.shape[1]), 1 / batch_pred.shape[1])).item()
         ent = h_loss(batch_pred.detach(), True) / max_ent
+        print("Size of tensor ent:", ent.shape)
         ent_sum += ent
 
         batch_org_ego = aggregate(org_blocks, agg_model, g.ndata["org_nmask"][org_input_nodes])
