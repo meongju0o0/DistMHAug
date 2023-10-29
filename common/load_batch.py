@@ -1,12 +1,14 @@
 import gc
+from concurrent.futures import ThreadPoolExecutor
 
 import dgl
-import torch as th
+
 
 class AugDataLoader:
     def __init__(self, g, train_nid, args, batch_size, shuffle=False, drop_last=False):
         self.g = g
         self.drop_last = drop_last
+
         fanout = [int(fanout) for fanout in args.fan_out.split(",")]
 
         self.samplers = [dgl.dataloading.NeighborSampler(fanout, prob=None),
@@ -16,20 +18,26 @@ class AugDataLoader:
         self.org_dataloader = dgl.dataloading.DistNodeDataLoader(
             g, train_nid, self.samplers[0], batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
 
-        self.src_nodes_list = {"org_src_nodes": [], "prev_src_nodes": [], "cur_src_nodes": []}
-        self.dst_nodes_list = {"org_dst_nodes": [], "prev_dst_nodes": [], "cur_dst_nodes": []}
-        self.blocks = {"org_blocks": [], "prev_blocks": [], "cur_blocks": []}
-
-        self.limit = 0
-        self.idx = 0
+        self.executor = ThreadPoolExecutor(max_workers=2)
 
 
     def __iter__(self):
-        for src_nodes, dst_nodes, blocks in self.org_dataloader:
-            self.limit += 1
-            self.src_nodes_list["org_src_nodes"].append(src_nodes)
-            self.dst_nodes_list["org_dst_nodes"].append(dst_nodes)
-            self.blocks["org_blocks"].append(blocks)
+        return self._generator()
+
+
+    @staticmethod
+    def _load_data(dataloader):
+        items = []
+        for item in dataloader:
+            items.append(item)
+        return items
+
+
+    def _generator(self):
+        for step, (src_nodes, dst_nodes, blocks) in enumerate(self.org_dataloader):
+            org_src_nodes = src_nodes
+            org_dst_nodes = dst_nodes
+            org_blocks = blocks
 
             prev_dataloader = dgl.dataloading.DistNodeDataLoader(
                 self.g, src_nodes, self.samplers[1],
@@ -39,36 +47,16 @@ class AugDataLoader:
                 self.g, src_nodes, self.samplers[2],
                 batch_size=src_nodes.size(dim=0), shuffle=False, drop_last=self.drop_last)
 
-            for src_nodes, dst_nodes, blocks in prev_dataloader:
-                self.src_nodes_list["prev_src_nodes"].append(src_nodes)
-                self.dst_nodes_list["prev_dst_nodes"].append(dst_nodes)
-                self.blocks["prev_blocks"].append(blocks)
+            future_prev = self.executor.submit(self._load_data, prev_dataloader)
+            future_cur = self.executor.submit(self._load_data, cur_dataloader)
 
-            for src_nodes, dst_nodes, blocks in cur_dataloader:
-                self.src_nodes_list["cur_src_nodes"].append(src_nodes)
-                self.dst_nodes_list["cur_dst_nodes"].append(dst_nodes)
-                self.blocks["cur_blocks"].append(blocks)
+            prev_src_nodes, prev_dst_nodes, prev_blocks = future_prev.result()
+            cur_src_nodes, cur_dst_nodes, cur_blocks = future_cur.result()
 
-            gc.collect(0)
-            print("****************")
-            print(self.limit)
-
-        return self
+            yield {"org": [org_src_nodes, org_dst_nodes, org_blocks],
+                   "prev": [prev_src_nodes, prev_dst_nodes, prev_blocks],
+                   "cur": [cur_src_nodes, cur_dst_nodes, cur_blocks]}
 
 
-    def __next__(self):
-        if self.idx < self.limit:
-            self.idx += 1
-
-            org_src_list = self.src_nodes_list["org_src_nodes"][self.idx]
-            org_blocks = self.blocks["org_blocks"][self.idx]
-            prev_src_list = self.src_nodes_list["prev_src_nodes"][self.idx]
-            prev_blocks = self.blocks["prev_blocks"][self.idx]
-            cur_src_list = self.src_nodes_list["cur_src_nodes"][self.idx]
-            cur_blocks = self.blocks["cur_blocks"][self.idx]
-
-            return {"org": [org_src_list, org_src_list, org_blocks],
-                    "prev": [prev_src_list, prev_src_list, prev_blocks],
-                    "cur": [cur_src_list, cur_src_list, cur_blocks]}
-        else:
-            raise StopIteration
+    def __del__(self):
+        self.executor.shutdown(wait=True)
