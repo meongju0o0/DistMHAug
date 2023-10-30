@@ -27,12 +27,6 @@ def mh_aug(args, g, model, dataloader, device):
     prev_num_edges = g.edata["prev_emask"].local_partition.sum()
     prev_num_nodes = g.ndata["prev_nmask"].local_partition.sum()
 
-    print("***************************")
-    print("org_num_edges: ", org_num_edges)
-    print("org_num_nodes: ", org_num_nodes)
-    print("prev_num_edges: ", prev_num_edges)
-    print("prev_num_nodes: ", prev_num_nodes)
-
     delta_g_e = 1 - prev_num_edges / org_num_edges
     a, b = (0 - delta_g_e) / args.sigma_delta_e, (1 - delta_g_e) / args.sigma_delta_e
     delta_g_e_aug = truncnorm.rvs(a, b, loc=delta_g_e, scale=args.sigma_delta_e)
@@ -114,14 +108,16 @@ def mh_aug(args, g, model, dataloader, device):
             loc=delta_g_v, scale=args.sigma_delta_v) +
             args.lam2_v * betaln(org_num_nodes - org_num_nodes * delta_g_v_aug + 1, org_num_nodes * delta_g_v_aug + 1))
 
-        print("q: ", q)
-        print("q_aug: ", q_aug)
-
         acceptance_sum += ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
 
-    acceptance = acceptance_sum / batch_cnt
+    rv = float(np.log(random.random()))
+    acceptance = float(acceptance_sum / batch_cnt)
 
-    if np.log(random.random()) < acceptance:
+    is_accept = (rv < acceptance)
+
+    print(f"rv: {rv:.4f}, acceptance: {acceptance:.4f}, {is_accept}")
+
+    if is_accept:
         if delta_g_e + delta_g_v < delta_g_e_aug + delta_g_v_aug:
             return g, True
         else:

@@ -17,6 +17,7 @@ from mh_aug import mh_aug
 from common.set_graph import SetGraph
 from common.load_batch import AugDataLoader
 from common.config import CONFIG
+from common.calc import one_hot_encode
 
 
 def init(shape, dtype):
@@ -98,43 +99,71 @@ def run(args, device, data):
 
         with model.join():
             while True:
+                print("Trying Metropolis-Hastings Augmentation...", end=" | ")
                 cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
                 if kl_loss_opt is not None:
                     print("Metropolis-Hastings Augmentation Accepted!!!")
                     break
 
-            for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in enumerate(dataloader):
+            for step, src_and_blocks in enumerate(dataloader):
                 # input_nodes: src nodes, i.e. whole nodes
                 # seeds: dst nodes
                 # blocks: Message Flow Graph
+
+                org = src_and_blocks["org"]
+                org_input_nodes = org[0]
+                org_dst_nodes = org[1]
+                org_blocks = org[2]
+
+                prev = src_and_blocks["prev"]
+                prev_input_nodes = prev[0]
+                prev_dst_nodes = prev[1]
+                prev_blocks = prev[2]
+
+                cur = src_and_blocks["cur"]
+                cur_input_nodes = cur[0]
+                cur_dst_nodes = cur[1]
+                cur_blocks = cur[2]
 
                 # Declare time variable to calculate computing time
                 tic_step = time.time()
                 sample_time += tic_step - start
 
                 # Slice feature and label.
-                batch_inputs = g.ndata["features"][input_nodes]
-                batch_labels = g.ndata["labels"][seeds].long()
-                num_seeds += len(blocks[-1].dstdata[dgl.NID])
-                num_inputs += len(blocks[0].srcdata[dgl.NID])
+                org_batch_inputs = g.ndata["features"][org_input_nodes]
+                prev_batch_inputs = g.ndata["features"][prev_input_nodes]
+                cur_batch_inputs = g.ndata["features"][cur_input_nodes]
+
+                org_batch_labels = g.ndata["labels"][org_dst_nodes].long()
+                prev_batch_labels = g.ndata["labels"][prev_dst_nodes].long()
+
+                num_seeds += len(org_blocks[-1].dstdata[dgl.NID])
+                num_inputs += len(org_blocks[0].srcdata[dgl.NID])
 
                 # Move to target device.
-                blocks = [block.to(device) for block in blocks]
-                batch_inputs = batch_inputs.to(device)
-                batch_labels = batch_labels.to(device)
+                org_blocks = [block.to(device) for block in org_blocks]
+
+                org_batch_inputs = org_batch_inputs.to(device)
+                prev_batch_inputs = prev_batch_inputs.to(device)
+                cur_batch_inputs = cur_batch_inputs.to(device)
+
+                org_batch_labels = org_batch_labels.to(device)
+                prev_batch_labels = prev_batch_labels.to(device)
 
                 # Compute loss and prediction.
                 start = time.time()
 
-                batch_pred = model(blocks, batch_inputs)
-                batch_prev_pred = model(prev_blocks, batch_inputs)
-                batch_cur_pred = model(cur_blocks, batch_inputs)
+                batch_pred = model(org_blocks, org_batch_inputs)
+                batch_prev_pred = model(prev_blocks, prev_batch_inputs)
+                batch_cur_pred = model(cur_blocks, cur_batch_inputs)
 
                 forward_end = time.time()
 
-                loss_XE = hard_xe_loss_op(batch_prev_pred, batch_labels)
+                one_hot_prev_batch_labels = one_hot_encode(prev_batch_labels, n_classes)
+
+                loss_XE = hard_xe_loss_op(batch_prev_pred, prev_batch_labels)
                 if args.option_loss == 0:
-                    loss_KL = soft_xe_loss_op(batch_prev_pred, batch_cur_pred)
+                    loss_KL = soft_xe_loss_op(batch_prev_pred, one_hot_prev_batch_labels)
                 else:
                     if kl_loss_opt:
                         loss_KL = js_loss_op(batch_prev_pred.detach(), batch_cur_pred)
@@ -157,8 +186,8 @@ def run(args, device, data):
 
                 step_t = time.time() - tic_step
                 step_time.append(step_t)
-                iter_tput.append(len(blocks[-1].dstdata[dgl.NID]) / step_t)
-                acc = compute_acc(batch_pred, batch_labels)
+                iter_tput.append(len(org_blocks[-1].dstdata[dgl.NID]) / step_t)
+                acc = compute_acc(batch_pred, org_batch_labels)
                 gpu_mem_alloc = (
                     th.cuda.max_memory_allocated() / 1000000
                     if th.cuda.is_available()
@@ -262,6 +291,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.003)
     parser.add_argument("--decay", type=float, default=0.0005)
     parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--option_loss", type=int, default=0)
     parser.add_argument("--local_rank", type=int, help="get rank of the process")
     parser.add_argument("--pad-data", default=False, action="store_true",
         help="Pad train nid to the same length across machine, to ensure num of batches to be the same.")

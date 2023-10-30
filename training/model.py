@@ -11,7 +11,6 @@ class SAGEConvSUM(dglnn.SAGEConv):
     def __init__(self, in_feats, n_classes):
         super().__init__(in_feats, n_classes,
                          aggregator_type="mean", feat_drop=0, bias=False, norm=None, activation=None)
-        self._aggre_type = "sum"
 
 
     def reset_parameters(self):
@@ -48,14 +47,13 @@ class SAGEConvSUM(dglnn.SAGEConv):
             lin_before_mp = self._in_src_feats > self._out_feats
 
             # Message Passing
-            if self._aggre_type == "sum":
-                graph.srcdata["h"] = (
-                    self.fc_neigh(feat_src) if lin_before_mp else feat_src
-                )
-                graph.update_all(msg_fn, fn.sum("m", "neigh"))
-                h_neigh = graph.dstdata["neigh"]
-                if not lin_before_mp:
-                    h_neigh = self.fc_neigh(h_neigh)
+            graph.srcdata["h"] = (
+                self.fc_neigh(feat_src) if lin_before_mp else feat_src
+            )
+            graph.update_all(msg_fn, fn.sum("m", "neigh"))
+            h_neigh = graph.dstdata["neigh"]
+            if not lin_before_mp:
+                h_neigh = self.fc_neigh(h_neigh)
 
         rst = self.fc_self(h_self) + h_neigh
 

@@ -1,4 +1,3 @@
-import gc
 from concurrent.futures import ThreadPoolExecutor
 
 import dgl
