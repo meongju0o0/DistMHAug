@@ -82,7 +82,8 @@ def run(args, device, data):
     epoch = 0
     epoch_time = []
     test_acc = 0.0
-    for _ in range(args.num_epochs):
+
+    while epoch < args.num_epochs:
         epoch += 1
         tic = time.time()
         # Various time statistics.
@@ -96,7 +97,12 @@ def run(args, device, data):
         step_time = []
 
         with model.join():
-            cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
+            while True:
+                cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
+                if kl_loss_opt is not None:
+                    print("Metropolis-Hastings Augmentation Accepted!!!")
+                    break
+
             for step, (input_nodes, seeds, org_blocks, prev_blocks, cur_blocks) in enumerate(dataloader):
                 # input_nodes: src nodes, i.e. whole nodes
                 # seeds: dst nodes
@@ -193,7 +199,7 @@ def run(args, device, data):
             print(
                 f"Part {g.rank()}, Val Acc {val_acc:.4f}, "
                 f"Test Acc {test_acc:.4f}, time: {time.time() - start:.4f}"
-            )
+                )
 
     return np.mean(epoch_time[-int(args.num_epochs * 0.8) :]), test_acc
 
