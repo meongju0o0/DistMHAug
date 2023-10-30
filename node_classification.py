@@ -44,6 +44,9 @@ def run(args, device, data):
     num_edges = g.num_edges()
     num_nodes = g.num_nodes()
 
+    g.ndata["prev_features"] = g.ndata["features"][0:num_nodes]
+    g.ndata["cur_features"] = g.ndata["features"][0:num_nodes]
+
     # mpv: message passing value
     g.ndata["ones"] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='mpv', init_func=init)
 
@@ -102,7 +105,6 @@ def run(args, device, data):
                 print("Trying Metropolis-Hastings Augmentation...", end=" | ")
                 cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
                 if kl_loss_opt is not None:
-                    print("Metropolis-Hastings Augmentation Accepted!!!")
                     break
 
             for step, src_and_blocks in enumerate(dataloader):
@@ -131,8 +133,8 @@ def run(args, device, data):
 
                 # Slice feature and label.
                 org_batch_inputs = g.ndata["features"][org_input_nodes]
-                prev_batch_inputs = g.ndata["features"][prev_input_nodes]
-                cur_batch_inputs = g.ndata["features"][cur_input_nodes]
+                prev_batch_inputs = g.ndata["prev_features"][prev_input_nodes]
+                cur_batch_inputs = g.ndata["cur_features"][cur_input_nodes]
 
                 org_batch_labels = g.ndata["labels"][org_dst_nodes].long()
                 prev_batch_labels = g.ndata["labels"][prev_dst_nodes].long()
