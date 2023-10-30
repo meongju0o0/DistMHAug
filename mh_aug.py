@@ -27,11 +27,19 @@ def mh_aug(args, g, model, dataloader, device):
     prev_num_edges = g.edata["prev_emask"].local_partition.sum()
     prev_num_nodes = g.ndata["prev_nmask"].local_partition.sum()
 
+    print("***************************")
+    print("org_num_edges: ", org_num_edges)
+    print("org_num_nodes: ", org_num_nodes)
+    print("prev_num_edges: ", prev_num_edges)
+    print("prev_num_nodes: ", prev_num_nodes)
+
     delta_g_e = 1 - prev_num_edges / org_num_edges
-    delta_g_e_aug = truncnorm.rvs(0, 1, loc=delta_g_e, scale=args.sigma_delta_e)
+    a, b = (0 - delta_g_e) / args.sigma_delta_e, (1 - delta_g_e) / args.sigma_delta_e
+    delta_g_e_aug = truncnorm.rvs(a, b, loc=delta_g_e, scale=args.sigma_delta_e)
 
     delta_g_v = 1 - prev_num_nodes / org_num_nodes
-    delta_g_v_aug = truncnorm.rvs(0, 1, loc=delta_g_v, scale=args.sigma_delta_v)
+    a, b = (0 - delta_g_v) / args.sigma_delta_v, (1 - delta_g_v) / args.sigma_delta_v
+    delta_g_v_aug = truncnorm.rvs(a, b, loc=delta_g_v, scale=args.sigma_delta_v)
 
     MHMasking(g, delta_g_e_aug, delta_g_v_aug, device)
 
@@ -89,14 +97,25 @@ def mh_aug(args, g, model, dataloader, device):
         p_aug = (args.lam1_e * log_normal(delta_g_aug_e_, args.mu_e, args.a_e * ent + args.b_e) +
                  args.lam1_v * log_normal(delta_g_aug_v_, args.mu_v, args.a_v * ent + args.b_v))
 
-        q = (truncnorm.logpdf(delta_g_e, 0, 1, loc=delta_g_e_aug, scale=args.sigma_delta_e) +
+        q = (truncnorm.logpdf(delta_g_e, (0 - delta_g_e_aug) / args.sigma_delta_e,
+            (1 - delta_g_e_aug) / args.sigma_delta_e,
+            loc=delta_g_e_aug, scale=args.sigma_delta_e) +
             args.lam2_e * betaln(org_num_edges - org_num_edges * delta_g_e + 1, org_num_edges * delta_g_e + 1) +
-            truncnorm.logpdf(delta_g_v, 0, 1, loc=delta_g_v_aug, scale=args.sigma_delta_v) +
+            truncnorm.logpdf(delta_g_v, (0 - delta_g_v_aug) / args.sigma_delta_v,
+            (1 - delta_g_v_aug) / args.sigma_delta_v,
+            loc=delta_g_v_aug, scale=args.sigma_delta_v) +
             args.lam2_v * betaln(org_num_nodes - org_num_nodes * delta_g_v + 1, org_num_nodes * delta_g_v + 1))
-        q_aug = (truncnorm.logpdf(delta_g_e_aug, 0, 1, loc=delta_g_e, scale=args.sigma_delta_e) +
+        q_aug = (truncnorm.logpdf(delta_g_e_aug, (0 - delta_g_e) / args.sigma_delta_e,
+            (1 - delta_g_e) / args.sigma_delta_e,
+            loc=delta_g_e, scale=args.sigma_delta_e) +
             args.lam2_e * betaln(org_num_edges - org_num_edges * delta_g_e_aug + 1, org_num_edges * delta_g_e_aug + 1) +
-            truncnorm.logpdf(delta_g_v_aug, 0, 1, loc=delta_g_v, scale=args.sigma_delta_v) +
+            truncnorm.logpdf(delta_g_v_aug, (0 - delta_g_v) / args.sigma_delta_v,
+            (1 - delta_g_v) / args.sigma_delta_v,
+            loc=delta_g_v, scale=args.sigma_delta_v) +
             args.lam2_v * betaln(org_num_nodes - org_num_nodes * delta_g_v_aug + 1, org_num_nodes * delta_g_v_aug + 1))
+
+        print("q: ", q)
+        print("q_aug: ", q_aug)
 
         acceptance_sum += ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
 
