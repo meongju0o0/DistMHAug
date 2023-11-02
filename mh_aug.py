@@ -2,6 +2,7 @@ import random
 
 import dgl
 import torch as th
+import torch.distributed as dist
 
 import numpy as np
 from scipy.stats import truncnorm
@@ -28,16 +29,18 @@ def mh_aug(args, g, model, dataloader, device):
     prev_num_nodes = g.ndata["prev_nmask"].local_partition.sum()
 
     delta_g_e = 1 - prev_num_edges / org_num_edges
-    a, b = (0 - delta_g_e) / args.sigma_delta_e, (1 - delta_g_e) / args.sigma_delta_e
-    delta_g_e_aug = truncnorm.rvs(a, b, loc=delta_g_e, scale=args.sigma_delta_e)
+    a, b = ((0 - delta_g_e) / args.sigma_delta_e).cpu(), ((1 - delta_g_e) / args.sigma_delta_e).cpu()
+    delta_g_e_aug = truncnorm.rvs(a, b, loc=delta_g_e.cpu(), scale=args.sigma_delta_e)
 
     delta_g_v = 1 - prev_num_nodes / org_num_nodes
-    a, b = (0 - delta_g_v) / args.sigma_delta_v, (1 - delta_g_v) / args.sigma_delta_v
-    delta_g_v_aug = truncnorm.rvs(a, b, loc=delta_g_v, scale=args.sigma_delta_v)
+    a, b = ((0 - delta_g_v) / args.sigma_delta_v).cpu(), ((1 - delta_g_v) / args.sigma_delta_v).cpu()
+    delta_g_v_aug = truncnorm.rvs(a, b, loc=delta_g_v.cpu(), scale=args.sigma_delta_v)
 
     MHMasking(g, delta_g_e_aug, delta_g_v_aug, device)
 
     agg_model = SimpleAGG(num_hop=2)
+    agg_model.to(device)
+
     h_loss = HLoss()
 
     model.eval()
@@ -79,12 +82,12 @@ def mh_aug(args, g, model, dataloader, device):
         max_ent = h_loss(th.full((1, batch_pred.shape[1]), 1 / batch_pred.shape[1])).item()
         ent = h_loss(batch_pred.detach(), True) / max_ent
 
-        batch_org_ego = aggregate(org_blocks, agg_model, g.ndata["org_nmask"][org_input_nodes])
+        batch_org_ego = aggregate(org_blocks, agg_model, g.ndata["org_nmask"][org_input_nodes].to(device))
 
-        delta_g_e_ = 1 - (aggregate(prev_blocks, agg_model, ones[prev_input_nodes]) / batch_org_ego).squeeze(1)
-        delta_g_aug_e_ = 1 - (aggregate(cur_blocks, agg_model, ones[cur_input_nodes]) / batch_org_ego).squeeze(1)
-        delta_g_v_ = 1 - (aggregate(prev_blocks, agg_model, ones[prev_input_nodes]) / batch_org_ego).squeeze(1)
-        delta_g_aug_v_ = 1 - (aggregate(cur_blocks, agg_model, ones[cur_input_nodes]) / batch_org_ego).squeeze(1)
+        delta_g_e_ = 1 - (aggregate(prev_blocks, agg_model, ones[prev_input_nodes].to(device)) / batch_org_ego).squeeze(1)
+        delta_g_aug_e_ = 1 - (aggregate(cur_blocks, agg_model, ones[cur_input_nodes].to(device)) / batch_org_ego).squeeze(1)
+        delta_g_v_ = 1 - (aggregate(prev_blocks, agg_model, ones[prev_input_nodes].to(device)) / batch_org_ego).squeeze(1)
+        delta_g_aug_v_ = 1 - (aggregate(cur_blocks, agg_model, ones[cur_input_nodes].to(device)) / batch_org_ego).squeeze(1)
 
         p = (args.lam1_e * log_normal(delta_g_e_, args.mu_e, args.a_e * ent + args.b_e) +
              args.lam1_v * log_normal(delta_g_v_, args.mu_v, args.a_v * ent + args.b_v))
@@ -110,12 +113,20 @@ def mh_aug(args, g, model, dataloader, device):
 
         acceptance_sum += ((th.sum(p_aug) - th.sum(p)) - (q_aug - q))
 
-    rv = float(np.log(random.random()))
-    acceptance = float(acceptance_sum / batch_cnt)
+    size = dist.get_world_size()
+
+    rv = th.tensor([float(np.log(random.random()))])
+    acceptance = th.tensor([float(acceptance_sum / batch_cnt)])
+
+    dist.all_reduce(rv, op=dist.ReduceOp.SUM)
+    dist.all_reduce(acceptance, op=dist.ReduceOp.SUM)
+
+    rv = float(rv.item() / size)
+    acceptance = float(acceptance.item() / size)
 
     is_accept = (rv < acceptance)
 
-    print(f"rv: {rv:.4f}, acceptance: {acceptance:.4f}, {is_accept}")
+    print(f"{g.rank()}'s mh-aug: rv = {rv:.4f}, acceptance = {acceptance:.4f}, {is_accept}")
 
     if is_accept:
         if delta_g_e + delta_g_v < delta_g_e_aug + delta_g_v_aug:

@@ -120,12 +120,10 @@ def execute_remote(
         ip_prefix += "{username}@".format(username=username)
 
     # Construct ssh command that executes `cmd` on the remote host
-    cmd_prefix = "source /home/meongju0o0/anaconda3/etc/profile.d/conda.sh && conda activate dgl && "
-    ssh_cmd = "ssh -o StrictHostKeyChecking=no -p {port} {ip_prefix}{ip} '{cmd_prefix}{cmd}'".format(
+    ssh_cmd = "ssh -o StrictHostKeyChecking=no -p {port} {ip_prefix}{ip} '{cmd}'".format(
         port=str(port),
         ip_prefix=ip_prefix,
         ip=ip,
-        cmd_prefix=cmd_prefix,
         cmd=cmd,
     )
 

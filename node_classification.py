@@ -59,7 +59,8 @@ def run(args, device, data):
     g.ndata['cur_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='cur_nmask', init_func=init)
 
     # Declare dataloader
-    dataloader = AugDataLoader(g, train_nid, args, batch_size=args.batch_size, shuffle=False, drop_last=False)
+    dataloader = AugDataLoader(g, train_nid, args,
+                               batch_size=args.batch_size, shuffle=False, drop_last=False, device=device)
 
     # Declare Training Methods
     model = DistSAGE(
@@ -102,9 +103,10 @@ def run(args, device, data):
 
         with model.join():
             while True:
-                print("Trying Metropolis-Hastings Augmentation...", end=" | ")
+                print(f"{g.rank()}: Trying Metropolis-Hastings Augmentation...")
                 cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
                 if kl_loss_opt is not None:
+                    print("Metropolis-Hastings Augmentation Accepted!!!")
                     break
 
             for step, src_and_blocks in enumerate(dataloader):
@@ -133,8 +135,8 @@ def run(args, device, data):
 
                 # Slice feature and label.
                 org_batch_inputs = g.ndata["features"][org_input_nodes]
-                prev_batch_inputs = g.ndata["prev_features"][prev_input_nodes]
-                cur_batch_inputs = g.ndata["cur_features"][cur_input_nodes]
+                prev_batch_inputs = g.ndata["features"][prev_input_nodes]
+                cur_batch_inputs = g.ndata["features"][cur_input_nodes]
 
                 org_batch_labels = g.ndata["labels"][org_dst_nodes].long()
                 prev_batch_labels = g.ndata["labels"][prev_dst_nodes].long()
@@ -279,7 +281,7 @@ if __name__ == "__main__":
         help="the number of classes")
     parser.add_argument("--backend", type=str, default="gloo",
         help="pytorch distributed backend")
-    parser.add_argument("--num_gpus", type=int, default=0,
+    parser.add_argument("--num_gpus", type=int, default=2,
         help="the number of GPU device. Use 0 for CPU training")
 
     parser.add_argument("--num_epochs", type=int, default=20)

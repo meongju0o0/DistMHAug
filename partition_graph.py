@@ -3,16 +3,62 @@ import time
 
 import dgl
 import torch as th
-from dgl.data import RedditDataset
+from dgl.data import CoraGraphDataset, CiteseerGraphDataset, AmazonCoBuyComputerDataset, AmazonCoBuyPhotoDataset, CoauthorCSDataset
 from ogb.nodeproppred import DglNodePropPredDataset
 
 
-def load_reddit(self_loop=True):
-    """Load reddit dataset."""
-    data = RedditDataset(self_loop=self_loop)
+def split_data(num_samples, train_ratio=0.6, val_ratio=0.2):
+    train_size = int(num_samples * train_ratio)
+    val_size = int(num_samples * val_ratio)
+    test_size = num_samples - train_size - val_size
+
+    train_mask = th.cat([th.ones(train_size, dtype=th.bool), th.zeros(num_samples - train_size, dtype=th.bool)])
+    val_mask = th.cat([th.zeros(train_size, dtype=th.bool), th.ones(val_size, dtype=th.bool), th.zeros(test_size, dtype=th.bool)])
+    test_mask = th.cat([th.zeros(train_size + val_size, dtype=th.bool), th.ones(test_size, dtype=th.bool)])
+
+    return train_mask, val_mask, test_mask
+
+
+def load_cora():
+    data = CoraGraphDataset()
     g = data[0]
     g.ndata["features"] = g.ndata.pop("feat")
     g.ndata["labels"] = g.ndata.pop("label")
+    return g, data.num_classes
+
+
+def load_citeseer():
+    data = CiteseerGraphDataset()
+    g = data[0]
+    g.ndata["features"] = g.ndata.pop("feat")
+    g.ndata["labels"] = g.ndata.pop("label")
+    return g, data.num_classes
+
+
+def load_computer():
+    data = AmazonCoBuyComputerDataset()
+    g = data[0]
+    g.ndata["features"] = g.ndata.pop("feat")
+    g.ndata["labels"] = g.ndata.pop("label")
+    g.ndata["train_mask"], g.ndata["val_mask"], g.ndata["test_mask"] = split_data(g.num_nodes())
+    return g, data.num_classes
+
+
+def load_photo():
+    data = AmazonCoBuyPhotoDataset()
+    g = data[0]
+    g.ndata["features"] = g.ndata.pop("feat")
+    g.ndata["labels"] = g.ndata.pop("label")
+    g.ndata["train_mask"], g.ndata["val_mask"], g.ndata["test_mask"] = split_data(g.num_nodes())
+    return g, data.num_classes
+
+
+def load_cs():
+    data = CoauthorCSDataset()
+    g = data[0]
+    g.ndata["features"] = g.ndata.pop("feat")
+    g.ndata["labels"] = g.ndata.pop("label")
+    g.ndata["train_mask"], g.ndata["val_mask"], g.ndata["test_mask"] = split_data(g.num_nodes())
     return g, data.num_classes
 
 
@@ -50,8 +96,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         "--dataset",
         type=str,
-        default="reddit",
-        help="datasets: reddit, ogbn-products, ogbn-papers100M",
+        default="cora",
     )
     argparser.add_argument(
         "--num_parts", type=int, default=4, help="number of partitions"
@@ -90,8 +135,16 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     start = time.time()
-    if args.dataset == "reddit":
-        g, _ = load_reddit()
+    if args.dataset == "cora":
+        g, _ = load_cora()
+    elif args.dataset == "citeseer":
+        g, _ = load_citeseer()
+    elif args.dataset == "computer":
+        g, _ = load_computer()
+    elif args.dataset == "photo":
+        g, _ = load_photo()
+    elif args.dataset == "cs":
+        g, _ = load_cs()
     elif args.dataset in ["ogbn-products", "ogbn-papers100M"]:
         g, _ = load_ogb(args.dataset)
     else:

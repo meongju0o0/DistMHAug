@@ -1,4 +1,5 @@
 import torch as th
+import dgl
 
 
 class MHMasking:
@@ -28,6 +29,8 @@ class MHMasking:
     def _mh_node_masking(self):
         num_node_drop = int(self.num_nodes * self.delta_g_v)
         masking_nids = th.randperm(self.num_nodes, device=self.device)[:num_node_drop]
+
+        self.g.ndata["cur_features"][masking_nids] = 1
 
         self.g.ndata["cur_nmask"] = self.g.edata["org_nmask"][0:self.num_nodes]
         self.g.ndata["cur_nmask"][masking_nids] = 0
