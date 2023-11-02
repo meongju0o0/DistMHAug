@@ -42,11 +42,13 @@ class SetGraph:
             self.train_nid = dgl.distributed.node_split(self.g.ndata["train_mask"], pb, force_even=True)
             self.val_nid = dgl.distributed.node_split(self.g.ndata["val_mask"], pb, force_even=True)
             self.test_nid = dgl.distributed.node_split(self.g.ndata["test_mask"], pb, force_even=True)
+
         local_nid = pb.partid2nids(pb.partid).detach().numpy()
 
         num_train_local = len(np.intersect1d(self.train_nid.numpy(), local_nid))
         num_val_local = len(np.intersect1d(self.val_nid.numpy(), local_nid))
         num_test_local = len(np.intersect1d(self.test_nid.numpy(), local_nid))
+
         print(
             f"part {self.g.rank()}, train: {len(self.train_nid)} (local: {num_train_local}), "
             f"val: {len(self.val_nid)} (local: {num_val_local}), "
@@ -63,8 +65,7 @@ class SetGraph:
             self.n_classes = len(th.unique(labels[th.logical_not(th.isnan(labels))]))
             del labels
 
-        if SetGraph.cnt == 1:
-            print(f"Number of classes: {n_classes}")
+        print(f"Number of classes: {n_classes}")
 
     def _pack_data(self):
         self.in_feats = self.g.ndata["features"].shape[1]

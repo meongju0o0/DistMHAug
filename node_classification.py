@@ -38,6 +38,7 @@ def run(args, device, data):
         This includes train/val/test IDs, feature dimension,
         number of classes, graph.
     """
+
     # Initial var declare and copy for augmentation training
     train_nid, val_nid, test_nid, in_feats, n_classes, g = data
 
@@ -47,18 +48,24 @@ def run(args, device, data):
     g.ndata["prev_features"] = g.ndata["features"][0:num_nodes]
     g.ndata["cur_features"] = g.ndata["features"][0:num_nodes]
 
-    # mpv: message passing value
-    g.ndata["ones"] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='mpv', init_func=init)
+    g.ndata["ones"] = dgl.distributed.DistTensor((num_nodes, 1), th.float32,
+                                                 name='mpv', init_func=init)  # mpv: message passing value
 
-    g.edata['org_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32, name='org_emask', init_func=init)
-    g.edata['prev_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32, name='prev_emask', init_func=init)
-    g.edata['cur_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32, name='cur_emask', init_func=init)
+    g.edata['org_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32,
+                                                      name='org_emask', init_func=init)
+    g.edata['prev_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32,
+                                                       name='prev_emask', init_func=init)
+    g.edata['cur_emask'] = dgl.distributed.DistTensor((num_edges, 1), th.float32,
+                                                      name='cur_emask', init_func=init)
 
-    g.ndata['org_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='org_nmask', init_func=init)
-    g.ndata['prev_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='prev_nmask', init_func=init)
-    g.ndata['cur_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32, name='cur_nmask', init_func=init)
+    g.ndata['org_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32,
+                                                      name='org_nmask', init_func=init)
+    g.ndata['prev_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32,
+                                                       name='prev_nmask', init_func=init)
+    g.ndata['cur_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32,
+                                                      name='cur_nmask', init_func=init)
 
-    # Declare dataloader
+    # Declare DataLoader
     dataloader = AugDataLoader(g, train_nid, args,
                                batch_size=args.batch_size, shuffle=False, drop_last=False, device=device)
 
@@ -76,10 +83,14 @@ def run(args, device, data):
         model = th.nn.parallel.DistributedDataParallel(model)
     else:
         model = th.nn.parallel.DistributedDataParallel(model, device_ids=[device], output_device=device)
+
+    # Declare Loss Functions
     hard_xe_loss_op = nn.CrossEntropyLoss()
     soft_xe_loss_op = XeLoss()
     h_loss_op = HLoss()
     js_loss_op = JensenShannon()
+
+    # Declare Optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
 
     # Training loop.
