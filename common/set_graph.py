@@ -4,9 +4,7 @@ import dgl
 
 
 class SetGraph:
-    cnt = 0
     def __init__(self, g, args):
-        SetGraph.cnt += 1
         self.args = args
         self.g =g
         self.train_nid, self.val_nid, self.test_nid = None, None, None
@@ -48,15 +46,14 @@ class SetGraph:
             self.test_nid = dgl.distributed.node_split(self.g.ndata["test_mask"], pb, force_even=True)
         local_nid = pb.partid2nids(pb.partid).detach().numpy()
 
-        if SetGraph.cnt == 1:
-            num_train_local = len(np.intersect1d(self.train_nid.numpy(), local_nid))
-            num_val_local = len(np.intersect1d(self.val_nid.numpy(), local_nid))
-            num_test_local = len(np.intersect1d(self.test_nid.numpy(), local_nid))
-            print(
-                f"part {self.g.rank()}, train: {len(self.train_nid)} (local: {num_train_local}), "
-                f"val: {len(self.val_nid)} (local: {num_val_local}), "
-                f"test: {len(self.test_nid)} (local: {num_test_local})"
-            )
+        num_train_local = len(np.intersect1d(self.train_nid.numpy(), local_nid))
+        num_val_local = len(np.intersect1d(self.val_nid.numpy(), local_nid))
+        num_test_local = len(np.intersect1d(self.test_nid.numpy(), local_nid))
+        print(
+            f"part {self.g.rank()}, train: {len(self.train_nid)} (local: {num_train_local}), "
+            f"val: {len(self.val_nid)} (local: {num_val_local}), "
+            f"test: {len(self.test_nid)} (local: {num_test_local})"
+        )
 
         del local_nid
 
