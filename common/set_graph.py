@@ -6,16 +6,14 @@ import dgl
 class SetGraph:
     def __init__(self, g, args):
         self.args = args
-        self.g =g
+        self.g = g
         self.train_nid, self.val_nid, self.test_nid = None, None, None
         self.in_feats, self.n_classes = None, None
-
 
     def __call__(self):
         self._train_test_split()
         self._get_classes()
         return self._pack_data()
-
 
     def _train_test_split(self):
         pb = self.g.get_partition_book()
@@ -57,7 +55,6 @@ class SetGraph:
 
         del local_nid
 
-
     def _get_classes(self):
         n_classes = self.args.n_classes
 
@@ -68,7 +65,6 @@ class SetGraph:
 
         if SetGraph.cnt == 1:
             print(f"Number of classes: {n_classes}")
-
 
     def _pack_data(self):
         self.in_feats = self.g.ndata["features"].shape[1]
