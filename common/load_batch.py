@@ -17,10 +17,8 @@ class AugDataLoader:
             g, train_nid, self.samplers[0],
             batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, device="cpu")
 
-
     def __iter__(self):
         return self._generator()
-
 
     def _generator(self):
         for step, (src_nodes, dst_nodes, blocks) in enumerate(self.org_dataloader):

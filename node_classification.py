@@ -94,10 +94,10 @@ def run(args, device, data):
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
 
     # Training loop.
-    iter_tput = []
-    epoch = 0
-    epoch_time = []
-    test_acc = 0.0
+    batch_time = []  # time check per batch
+    epoch = 0  # epoch count
+    epoch_time = []  # time check per epoch
+    test_acc = 0.0  # get accuracy per epoch
 
     while epoch < args.num_epochs:
         epoch += 1
@@ -121,7 +121,7 @@ def run(args, device, data):
                     break
 
             for step, src_and_blocks in enumerate(dataloader):
-                # input_nodes: src nodes, i.e. whole nodes
+                # input_nodes: src nodes, i.e. whole MFG's nodes
                 # seeds: dst nodes
                 # blocks: Message Flow Graph
 
@@ -201,22 +201,26 @@ def run(args, device, data):
 
                 step_t = time.time() - tic_step
                 step_time.append(step_t)
-                iter_tput.append(len(org_blocks[-1].dstdata[dgl.NID]) / step_t)
+                batch_time.append(len(org_blocks[-1].dstdata[dgl.NID]) / step_t)
+
                 acc = compute_acc(batch_pred, org_batch_labels)
                 gpu_mem_alloc = (
                     th.cuda.max_memory_allocated() / 1000000
                     if th.cuda.is_available()
                     else 0
                 )
-                sample_speed = np.mean(iter_tput[-args.log_every :])
-                mean_step_time = np.mean(step_time[-args.log_every :])
+
+                sample_speed = np.mean(batch_time[-args.log_every:])
+                mean_step_time = np.mean(step_time[-args.log_every:])
+
                 print(
                     f"Part {g.rank()} | Epoch {epoch:05d} | Step {step:05d}"
-                    f" | Loss {total_loss.item():.4f} | Train Acc {acc.item():.4f}"
+                    f" | Loss {total_loss.item():.4f} | Train Acc {acc:.4f}"
                     f" | Speed (samples/sec) {sample_speed:.4f}"
                     f" | GPU {gpu_mem_alloc:.1f} MB | "
                     f"Mean step time {mean_step_time:.3f} s"
                 )
+
                 start = time.time()
 
         toc = time.time()
@@ -245,7 +249,7 @@ def run(args, device, data):
                 f"Test Acc {test_acc:.4f}, time: {time.time() - start:.4f}"
                 )
 
-    return np.mean(epoch_time[-int(args.num_epochs * 0.8) :]), test_acc
+    return np.mean(epoch_time[-int(args.num_epochs * 0.8):]), test_acc
 
 
 def main(args):

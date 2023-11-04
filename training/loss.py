@@ -12,7 +12,6 @@ class HLoss(Loss):
     Loss for Regularizing
     Penalizes unconfident predictions and sharpens predictions
     """
-
     def __init__(self):
         super(HLoss, self).__init__()
 
@@ -44,7 +43,6 @@ class XeLoss(Loss):
     Loss using Kullback-Leibler Divergence
     Encourages the consistency of predictions on two consecutive augmented samples G^(t), G^(t+1)
     """
-
     def __init__(self):
         super(XeLoss, self).__init__()
 
@@ -73,7 +71,6 @@ class JensenShannon(Loss):
     """
     Symmetrical KL Divergence
     """
-
     def __init__(self):
         super(JensenShannon, self).__init__()
 

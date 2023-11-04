@@ -4,7 +4,6 @@ import dgl.function as fn
 import numpy as np
 import torch as th
 import torch.nn as nn
-import tqdm
 
 
 class SAGEConvSUM(dglnn.SAGEConv):
@@ -12,13 +11,11 @@ class SAGEConvSUM(dglnn.SAGEConv):
         super().__init__(in_feats, n_classes,
                          aggregator_type="mean", feat_drop=0, bias=False, norm=None, activation=None)
 
-
     def reset_parameters(self):
         """
         Reset weight parameters as a one
         """
         nn.init.ones_(self.fc_neigh.weight)
-
 
     def forward(self, graph, feat, edge_weight=None):
         with graph.local_scope():
@@ -39,23 +36,17 @@ class SAGEConvSUM(dglnn.SAGEConv):
 
             # Handle the case of graphs without edges
             if graph.num_edges() == 0:
-                graph.dstdata["neigh"] = th.zeros(
-                    feat_dst.shape[0], self._in_src_feats
-                ).to(feat_dst)
+                graph.dstdata["neigh"] = th.zeros(feat_dst.shape[0], self._in_src_feats).to(feat_dst)
 
             # Determine whether to apply linear transformation before message passing A(XW)
             lin_before_mp = self._in_src_feats > self._out_feats
 
             # Message Passing
-            graph.srcdata["h"] = (
-                self.fc_neigh(feat_src) if lin_before_mp else feat_src
-            )
+            graph.srcdata["h"] = (self.fc_neigh(feat_src) if lin_before_mp else feat_src)
             graph.update_all(msg_fn, fn.sum("m", "neigh"))
             h_neigh = graph.dstdata["neigh"]
-            if not lin_before_mp:
-                h_neigh = self.fc_neigh(h_neigh)
 
-        rst = self.fc_self(h_self) + h_neigh
+        rst = h_neigh
 
         return rst
 
@@ -78,7 +69,6 @@ class SimpleAGG(nn.Module):
             self.layers.append(SAGEConvSUM(in_feats, n_classes))
 
         self.dropout = nn.Dropout(dropout)
-
 
     def forward(self, blocks, x):
         """
@@ -203,7 +193,7 @@ class DistSAGE(nn.Module):
                 drop_last=False,
             )
 
-            for input_nodes, output_nodes, blocks in tqdm.tqdm(dataloader):
+            for input_nodes, output_nodes, blocks in dataloader:
                 block = blocks[0].to(device)
                 h = x[input_nodes].to(device)
                 h_dst = h[: block.number_of_dst_nodes()]

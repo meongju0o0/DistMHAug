@@ -1,5 +1,4 @@
 import torch as th
-import dgl
 
 
 class MHMasking:
@@ -11,11 +10,9 @@ class MHMasking:
         self.delta_g_v = delta_g_v
         self.device = device
 
-
     def __call__(self):
         self._mh_edge_masking()
         self._mh_node_masking()
-
 
     def _mh_edge_masking(self):
         num_edge_drop = self.num_edges - int(self.num_edges * self.delta_g_e)
@@ -24,7 +21,6 @@ class MHMasking:
         self.g.edata["cur_emask"] = self.g.edata["org_emask"][0:self.num_edges]
         self.g.edata["cur_emask"][masking_eids] = 0
         self.g.edata["org_emask"][0:self.num_edges] = 1
-
 
     def _mh_node_masking(self):
         num_node_drop = int(self.num_nodes * self.delta_g_v)
@@ -37,3 +33,8 @@ class MHMasking:
         self.g.ndata["org_nmask"][0:self.num_nodes] = 1
 
         self.g.ndata["cur_features"][masking_nids] = 0
+
+
+
+
+
