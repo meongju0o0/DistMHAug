@@ -33,8 +33,3 @@ class MHMasking:
         self.g.ndata["org_nmask"][0:self.num_nodes] = 1
 
         self.g.ndata["cur_features"][masking_nids] = 0
-
-
-
-
-
