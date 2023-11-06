@@ -157,6 +157,8 @@ def run(args, device, data):
 
                 # Move to target device.
                 org_blocks = [block.to(device) for block in org_blocks]
+                prev_blocks = [block.to(device) for block in prev_blocks]
+                cur_blocks = [block.to(device) for block in cur_blocks]
 
                 org_batch_inputs = org_batch_inputs.to(device)
                 prev_batch_inputs = prev_batch_inputs.to(device)

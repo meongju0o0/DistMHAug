@@ -36,17 +36,23 @@ class SAGEConvSUM(dglnn.SAGEConv):
 
             # Handle the case of graphs without edges
             if graph.num_edges() == 0:
-                graph.dstdata["neigh"] = th.zeros(feat_dst.shape[0], self._in_src_feats).to(feat_dst)
+                graph.dstdata["neigh"] = th.zeros(
+                    feat_dst.shape[0], self._in_src_feats
+                ).to(feat_dst)
 
             # Determine whether to apply linear transformation before message passing A(XW)
             lin_before_mp = self._in_src_feats > self._out_feats
 
             # Message Passing
-            graph.srcdata["h"] = (self.fc_neigh(feat_src) if lin_before_mp else feat_src)
+            graph.srcdata["h"] = (
+                self.fc_neigh(feat_src) if lin_before_mp else feat_src
+            )
             graph.update_all(msg_fn, fn.sum("m", "neigh"))
             h_neigh = graph.dstdata["neigh"]
+            if not lin_before_mp:
+                h_neigh = self.fc_neigh(h_neigh)
 
-        rst = h_neigh
+        rst = self.fc_self(h_self) + h_neigh
 
         return rst
 
