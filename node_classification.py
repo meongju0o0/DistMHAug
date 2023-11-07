@@ -251,7 +251,7 @@ def run(args, device, data):
                 f"Test Acc {test_acc:.4f}, time: {time.time() - start:.4f}"
                 )
 
-    return np.mean(epoch_time[-int(args.num_epochs * 0.8):]), test_acc
+    return epoch_time, test_acc
 
 
 def main(args):
@@ -281,7 +281,7 @@ def main(args):
 
     print(
         f"Summary of node classification(GraphSAGE): GraphName "
-        f"{args.graph_name} | TrainEpochTime(mean) {epoch_time:.4f} "
+        f"{args.graph_name} | TrainEpochTime(sum) {np.sum(epoch_time):.4f} "
         f"| TestAccuracy {test_acc:.4f}"
     )
 

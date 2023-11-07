@@ -1,1 +1,1 @@
-python3 partition_graph.py --dataset ogbn-products --num_parts 2 --balance_train --balance_edges
+python3 partition_graph.py --dataset ogbn-papers100M --num_parts 3 --balance_train --balance_edges
