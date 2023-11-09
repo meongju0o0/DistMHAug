@@ -285,6 +285,11 @@ def main(args):
         f"| TestAccuracy {test_acc:.4f}"
     )
 
+    with open(args.graph_name+'.txt', 'a') as f:
+        f.write(f"Summary of node classification(GraphSAGE): GraphName "
+                f"{args.graph_name} | TrainEpochTime(sum) {np.sum(epoch_time):.4f} "
+                f"| TestAccuracy {test_acc:.4f}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Distributed GraphSAGE")
@@ -318,7 +323,7 @@ if __name__ == "__main__":
         help="Pad train nid to the same length across machine, to ensure num of batches to be the same.")
     args = parser.parse_args()
 
-    for key, value in CONFIG.items():
+    for key, value in CONFIG[args.graph_name].items():
         if not hasattr(args, key):
             setattr(args, key, value)
 

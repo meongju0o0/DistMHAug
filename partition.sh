@@ -1,1 +1,2 @@
-python3 partition_graph.py --dataset ogbn-papers100M --num_parts 3 --balance_train --balance_edges
+#!/bin/bash
+python3 partition_graph.py --dataset cora --num_parts 4 --balance_train --balance_edges
