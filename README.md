@@ -1,6 +1,8 @@
 ## Distributed MHAug Training
 - Author: Juyeong Shin, Young-Koo Lee
 - KSC 2023 Paper
+- Paper link: https://www.dbpia.co.kr (not published yet)
+
 - Reference
   - DistDGL paper link: https://ieeexplore.ieee.org/abstract/document/9407264
   - MHAug paper link: https://proceedings.neurips.cc/paper/2021/hash/9e7ba617ad9e69b39bd0c29335b79629-Abstract.html
