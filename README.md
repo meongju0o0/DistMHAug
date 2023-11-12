@@ -1,14 +1,23 @@
-## Distributed training
+## Distributed MHAug Training
 
 This is an example of training GraphSage in a distributed fashion. Before training, please install some python libs by pip:
 
-```
-pip3 install ogb
+### PyTorch
+```shell
+pip3 install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
 ```
 
-**Requires PyTorch 1.12.0+ to work.**
+### DGL (Deep Graph Library)
+```shell
+pip3 install dgl==1.1.2 -f https://data.dgl.ai/wheels/repo.html
+```
 
-To train GraphSage, it has five steps:
+### OGB (Open Graph Benchmark)
+```shell
+pip3 install ogb==1.3.6
+```
+
+## To train DistMHAug, it has five steps:
 
 ### Step 0: Setup a Distributed File System
 * You may skip this step if your cluster already has folder(s) synchronized across machines.
@@ -18,34 +27,34 @@ To perform distributed training, files and codes need to be accessed across mult
 #### Server side setup
 Here is an example of how to setup NFS. First, install essential libs on the storage server
 
-```
+```shell
 sudo apt-get install nfs-kernel-server
 ```
 
 Below we assume the user account is `ubuntu` and we create a directory of `workspace` in the home directory.
 
-```
+```shell
 mkdir -p /home/ubuntu/workspace
 ```
 
 We assume that the all servers are under a subnet with ip range `192.168.0.0` to `192.168.255.255`. The exports configuration needs to be modifed to
 
-```
-sudo vim /etc/exports
+```shell
+sudo vi /etc/exports
 # add the following line
 /home/ubuntu/workspace  192.168.0.0/16(rw,sync,no_subtree_check)
 ```
 
 The server's internal ip can be checked  via `ifconfig` or `ip`. If the ip does not begin with `192.168`, then you may use
 
-```
+```text
 /home/ubuntu/workspace  10.0.0.0/8(rw,sync,no_subtree_check)
 /home/ubuntu/workspace  172.16.0.0/12(rw,sync,no_subtree_check)
 ```
 
 Then restart NFS, the setup on server side is finished.
 
-```
+```shell
 sudo systemctl restart nfs-kernel-server
 ```
 
@@ -55,20 +64,20 @@ For configraution details, please refer to [NFS ArchWiki](https://wiki.archlinux
 
 To use NFS, clients also require to install essential packages
 
-```
+```shell
 sudo apt-get install nfs-common
 ```
 
 You can either mount the NFS manually
 
-```
+```shell
 mkdir -p /home/ubuntu/workspace
 sudo mount -t nfs <nfs-server-ip>:/home/ubuntu/workspace /home/ubuntu/workspace
 ```
 
 or edit the fstab so the folder will be mounted automatically
 
-```
+```shell
 # vim /etc/fstab
 ## append the following line to the file
 <nfs-server-ip>:/home/ubuntu/workspace   /home/ubuntu/workspace   nfs   defaults	0 0
@@ -115,9 +124,9 @@ specify relative paths to the path of the workspace.
 
 The command below launches one process per machine for both sampling and training.
 
-```
-python3 ~/workspace/dgl/tools/launch.py \
---workspace ~/workspace/dgl/examples/pytorch/graphsage/dist/ \
+```shell
+python3 ~/DistMHAug/launch.py \
+--workspace ~/DistMHAug/ \
 --num_trainers 1 \
 --num_samplers 0 \
 --num_servers 1 \
@@ -128,13 +137,16 @@ python3 ~/workspace/dgl/tools/launch.py \
 
 By default, this code will run on CPU. If you have GPU support, you can just add a `--num_gpus` argument in user command:
 
-```
-python3 ~/workspace/dgl/tools/launch.py \
---workspace ~/workspace/dgl/examples/pytorch/graphsage/dist/ \
---num_trainers 4 \
+```shell
+python3 ~/DistMHAug/launch.py \
+--workspace ~/DistMHAug/ \
+--num_trainers 1 \
 --num_samplers 0 \
 --num_servers 1 \
 --part_config data/ogbn-products.json \
 --ip_config ip_config.txt \
 "python3 node_classification.py --graph_name ogbn-products --ip_config ip_config.txt --num_epochs 30 --batch_size 1000 --num_gpus 4"
 ```
+
+### LICENSE
+© 2023 meongju0o0 uses Apache 2.0 License. Powered by DGL Team.
