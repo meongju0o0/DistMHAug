@@ -11,9 +11,9 @@ python3 /mnt/shared/development/dgl/juyeong/launch.py \
 --num_servers 1 \
 --part_config /mnt/shared/data/partitioned/parts4/ogb-product/ogb-product.json \
 --ip_config ip_config.txt \
-"python3 node_classification.py --graph_name ogb-product --ip_config ip_config.txt --num_epochs 2000 --batch_size 200"
+"python3 node_classification.py --graph_name ogb-product --ip_config ip_config.txt --num_epochs 30 --batch_size 1000"
 
 # cora: /mnt/shared/development/dgl/juyeong/data/4partition/cora/cora.json
 # citeseer: /mnt/shared/development/dgl/juyeong/data/4partition/citeseer/citeseer.json
 # ogbn-products: /mnt/shared/data/partitioned/parts4/ogb-product/ogb-product.json
-# ogbn-papers100M: /mnt/shared/data/partitioned/parts4/ogb-papers100M/ogb-papers100M.json
+# ogbn-papers100M: /mnt/shared/data/partitioned/parts4/ogb-paper100M/ogb-paper100M.json

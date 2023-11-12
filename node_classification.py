@@ -285,10 +285,10 @@ def main(args):
         f"| TestAccuracy {test_acc:.4f}"
     )
 
-    with open(args.graph_name+'.txt', 'a') as f:
+    with open('results/'+args.graph_name+'.txt', 'a') as f:
         f.write(f"Summary of node classification(GraphSAGE): GraphName "
                 f"{args.graph_name} | TrainEpochTime(sum) {np.sum(epoch_time):.4f} "
-                f"| TestAccuracy {test_acc:.4f}")
+                f"| TestAccuracy {test_acc:.4f}\n")
 
 
 if __name__ == "__main__":
