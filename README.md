@@ -9,7 +9,7 @@
   - DistDGL code link: https://github.com/dmlc/dgl/tree/master/examples/pytorch/graphsage/dist
   - MHAug code link: https://github.com/hyeonzini/Metropolis-Hastings-Data-Augmentation-for-Graph-Neural-Networks
 
-### PyTorch
+### PyTorch (CPU version)
 ```shell
 pip3 install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
 ```
@@ -19,7 +19,7 @@ pip3 install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
 pip3 install dgl==1.1.2 -f https://data.dgl.ai/wheels/repo.html
 ```
 
-### OGB (CPU version)
+### OGB
 ```shell
 pip3 install ogb==1.3.6
 ```
