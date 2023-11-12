@@ -7,3 +7,4 @@ run-cora.sh
 run-citeseer.sh
 run-ogbn-products.sh
 run-ogbn-papers100M.sh
+run-all.sh
