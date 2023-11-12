@@ -1,18 +1,23 @@
 ## Distributed MHAug Training
-
-This is an example of training GraphSage in a distributed fashion. Before training, please install some python libs by pip:
+- Author: Juyeong Shin, Young-Koo Lee
+- KSC 2023 Paper
+- Reference
+  - DistDGL paper link: https://ieeexplore.ieee.org/abstract/document/9407264
+  - MHAug paper link: https://proceedings.neurips.cc/paper/2021/hash/9e7ba617ad9e69b39bd0c29335b79629-Abstract.html
+  - DistDGL code link: https://github.com/dmlc/dgl/tree/master/examples/pytorch/graphsage/dist
+  - MHAug code link: https://github.com/hyeonzini/Metropolis-Hastings-Data-Augmentation-for-Graph-Neural-Networks
 
 ### PyTorch
 ```shell
 pip3 install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
 ```
 
-### DGL (Deep Graph Library)
+### DGL (CPU version)
 ```shell
 pip3 install dgl==1.1.2 -f https://data.dgl.ai/wheels/repo.html
 ```
 
-### OGB (Open Graph Benchmark)
+### OGB (CPU version)
 ```shell
 pip3 install ogb==1.3.6
 ```
