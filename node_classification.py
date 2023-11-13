@@ -6,6 +6,7 @@ import dgl
 import numpy as np
 import torch as th
 import torch.nn as nn
+import torch.distributed as dist
 import torch.nn.functional as F
 import torch.optim as optim
 
@@ -285,9 +286,15 @@ def main(args):
         f"| TestAccuracy {test_acc:.4f}"
     )
 
+    world_size = dist.get_world_size()
+    all_epoch_time = th.tensor([np.sum(epoch_time)])
+    dist.all_reduce(all_epoch_time, op=dist.ReduceOp.SUM)
+
+    all_epoch_time = all_epoch_time.item() / world_size
+
     with open('results/'+args.graph_name+'.txt', 'a') as f:
         f.write(f"Summary of node classification(GraphSAGE): GraphName "
-                f"{args.graph_name} | TrainEpochTime(sum) {np.sum(epoch_time):.4f} "
+                f"{args.graph_name} | TrainEpochTime(sum) {all_epoch_time:.4f} "
                 f"| TestAccuracy {test_acc:.4f}\n")
 
 
