@@ -1,0 +1,10 @@
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 65.9293 | TestAccuracy 0.6960
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 63.4723 | TestAccuracy 0.6000
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 59.0211 | TestAccuracy 0.6320
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 62.9341 | TestAccuracy 0.6360
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 58.0851 | TestAccuracy 0.6720
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 60.2966 | TestAccuracy 0.6440
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 63.9886 | TestAccuracy 0.6720
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 59.6932 | TestAccuracy 0.6840
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 62.7641 | TestAccuracy 0.6560
+Summary of node classification(GraphSAGE): GraphName citeseer | TrainEpochTime(sum) 60.9367 | TestAccuracy 0.6920

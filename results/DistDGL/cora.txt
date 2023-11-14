@@ -1,0 +1,10 @@
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 3.8383 | TestAccuracy 0.6680
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 4.2046 | TestAccuracy 0.6880
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 3.9190 | TestAccuracy 0.6600
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 4.2463 | TestAccuracy 0.6720
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 3.7751 | TestAccuracy 0.6600
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 3.8023 | TestAccuracy 0.6720
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 4.3292 | TestAccuracy 0.6560
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 4.0519 | TestAccuracy 0.6240
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 4.8554 | TestAccuracy 0.6440
+Summary of node classification(GraphSAGE): GraphName cora | TrainEpochTime(sum) 4.4117 | TestAccuracy 0.6680

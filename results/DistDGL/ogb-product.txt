@@ -1,0 +1,10 @@
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 182.0522 | TestAccuracy 0.6351
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 171.5393 | TestAccuracy 0.6302
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 182.6186 | TestAccuracy 0.6200
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 193.4157 | TestAccuracy 0.6284
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 169.1968 | TestAccuracy 0.6297
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 190.6370 | TestAccuracy 0.6234
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 179.5523 | TestAccuracy 0.6270
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 180.9863 | TestAccuracy 0.6315
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 195.8849 | TestAccuracy 0.6229
+Summary of node classification(GraphSAGE): GraphName ogb-product | TrainEpochTime(sum) 185.9098 | TestAccuracy 0.6308

@@ -289,13 +289,12 @@ def main(args):
     world_size = dist.get_world_size()
     all_epoch_time = th.tensor([np.sum(epoch_time)])
     dist.all_reduce(all_epoch_time, op=dist.ReduceOp.SUM)
-
     all_epoch_time = all_epoch_time.item() / world_size
-
-    with open('results/'+args.graph_name+'.txt', 'a') as f:
-        f.write(f"Summary of node classification(GraphSAGE): GraphName "
-                f"{args.graph_name} | TrainEpochTime(sum) {all_epoch_time:.4f} "
-                f"| TestAccuracy {test_acc:.4f}\n")
+    if g.rank() == 0:
+        with open('results/'+args.graph_name+'.txt', 'a') as f:
+            f.write(f"Summary of node classification(GraphSAGE): GraphName "
+                    f"{args.graph_name} | TrainEpochTime(sum) {all_epoch_time:.4f} "
+                    f"| TestAccuracy {test_acc:.4f}\n")
 
 
 if __name__ == "__main__":
