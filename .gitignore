@@ -1,6 +1,7 @@
 /.idea
-/dataset/*
-/data/*
+/dataset
+/data
+/results/.ipynb_checkpoints
 .DS_Store
 ip_config.txt
 run-cora.sh
