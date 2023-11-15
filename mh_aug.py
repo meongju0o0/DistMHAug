@@ -11,6 +11,7 @@ from scipy.special import betaln
 from augmentation.masking import MHMasking
 from training.loss import HLoss
 from training.model import SimpleAGG
+from common.load_batch import AugDataLoader
 from common.calc import log_normal
 
 
@@ -21,7 +22,7 @@ def aggregate(block, agg_model, x):
 
 
 @th.no_grad()
-def mh_aug(args, g, model, dataloader, device):
+def mh_aug(args, g, model, train_nid, device):
     org_num_edges = g.local_partition.num_edges()
     org_num_nodes = g.local_partition.num_nodes()
     prev_num_edges = g.edata["prev_emask"].local_partition.sum()
@@ -50,6 +51,15 @@ def mh_aug(args, g, model, dataloader, device):
     num_inputs = 0
     batch_cnt = 0
     acceptance_sum = 0
+
+    # Declare Samplers
+    samplers = [dgl.dataloading.NeighborSampler([-1], mask=None),
+                dgl.dataloading.NeighborSampler([-1], mask="prev_emask"),
+                dgl.dataloading.NeighborSampler([-1], mask="cur_emask")]
+
+    # Declare DataLoader
+    dataloader = AugDataLoader(g, samplers, train_nid, args,
+                               batch_size=args.batch_size, shuffle=False, drop_last=False, device=device)
 
     for step, src_and_blocks in enumerate(dataloader):
         batch_cnt += 1

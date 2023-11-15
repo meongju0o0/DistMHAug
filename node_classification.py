@@ -66,8 +66,14 @@ def run(args, device, data):
     g.ndata['cur_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32,
                                                       name='cur_nmask', init_func=init)
 
+    # Declare Samplers
+    fanout = [int(fanout) for fanout in args.fan_out.split(",")]
+    samplers = [dgl.dataloading.NeighborSampler(fanout, mask=None),
+                dgl.dataloading.NeighborSampler(fanout, mask="prev_emask"),
+                dgl.dataloading.NeighborSampler(fanout, mask="cur_emask")]
+
     # Declare DataLoader
-    dataloader = AugDataLoader(g, train_nid, args,
+    dataloader = AugDataLoader(g, samplers, train_nid, args,
                                batch_size=args.batch_size, shuffle=False, drop_last=False, device=device)
 
     # Declare Training Methods
@@ -116,7 +122,7 @@ def run(args, device, data):
         with model.join():
             while True:
                 print(f"{g.rank()}: Trying Metropolis-Hastings Augmentation...")
-                cur_g, kl_loss_opt = mh_aug(args, g, model, dataloader, device)
+                cur_g, kl_loss_opt = mh_aug(args, g, model, train_nid, device)
                 if kl_loss_opt is not None:
                     print("Metropolis-Hastings Augmentation Accepted!!!")
                     break
