@@ -142,11 +142,11 @@ def mh_aug(args, g, model, train_nid, device):
     rv = float(rv.item() / size)
     acceptance = float(acceptance.item() / size)
 
-    is_accept = (rv < acceptance)
+    is_accepted = (rv < acceptance)
 
-    print(f"{g.rank()}'s mh-aug: rv = {rv:.4f}, acceptance = {acceptance:.4f}, {is_accept}")
+    print(f"{g.rank()}'s mh-aug: rv = {rv:.4f}, acceptance = {acceptance:.4f}, {is_accepted}")
 
-    if is_accept:
+    if is_accepted:
         if delta_g_e + delta_g_v < delta_g_e_aug + delta_g_v_aug:
             return g, True
         else:
