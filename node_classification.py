@@ -66,15 +66,13 @@ def run(args, device, data):
     g.ndata['cur_nmask'] = dgl.distributed.DistTensor((num_nodes, 1), th.float32,
                                                       name='cur_nmask', init_func=init)
 
-    # Declare Samplers
+    # Declare Sampler and DataLoader
     fanout = [int(fanout) for fanout in args.fan_out.split(",")]
     samplers = [dgl.dataloading.NeighborSampler(fanout, mask=None),
                 dgl.dataloading.NeighborSampler(fanout, mask="prev_emask"),
                 dgl.dataloading.NeighborSampler(fanout, mask="cur_emask")]
-
-    # Declare DataLoader
-    dataloader = AugDataLoader(g, samplers, train_nid, args,
-                               batch_size=args.batch_size, shuffle=False, drop_last=False, device=device)
+    dataloader = AugDataLoader(g, samplers, train_nid,
+                               batch_size=args.batch_size, shuffle=False, drop_last=False, device="cpu")
 
     # Declare Training Methods
     model = DistSAGE(
@@ -90,7 +88,6 @@ def run(args, device, data):
         model = th.nn.parallel.DistributedDataParallel(model)
     else:
         model = th.nn.parallel.DistributedDataParallel(model, device_ids=[device], output_device=device)
-
     # Declare Loss Functions
     hard_xe_loss_op = nn.CrossEntropyLoss()
     soft_xe_loss_op = XeLoss()
@@ -105,7 +102,6 @@ def run(args, device, data):
     epoch = 0  # epoch count
     epoch_time = []  # time check per epoch
     test_acc = 0.0  # get accuracy per epoch
-
     while epoch < args.num_epochs:
         epoch += 1
         tic = time.time()
@@ -294,13 +290,16 @@ def main(args):
 
     world_size = dist.get_world_size()
     all_epoch_time = th.tensor([np.sum(epoch_time)])
+    all_test_acc = th.tensor([test_acc])
     dist.all_reduce(all_epoch_time, op=dist.ReduceOp.SUM)
+    dist.all_reduce(all_test_acc, op=dist.ReduceOp.SUM)
     all_epoch_time = all_epoch_time.item() / world_size
+    all_test_acc = all_test_acc.item() / world_size
     if g.rank() == 0:
         with open('results/'+args.graph_name+'.txt', 'a') as f:
             f.write(f"Summary of node classification(GraphSAGE): GraphName "
                     f"{args.graph_name} | TrainEpochTime(sum) {all_epoch_time:.4f} "
-                    f"| TestAccuracy {test_acc:.4f}\n")
+                    f"| TestAccuracy {all_test_acc:.4f}\n")
 
 
 if __name__ == "__main__":

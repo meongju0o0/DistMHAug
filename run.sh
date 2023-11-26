@@ -16,4 +16,3 @@ python3 /mnt/shared/development/dgl/juyeong/launch.py \
 # cora: /mnt/shared/development/dgl/juyeong/data/4partition/cora/cora.json
 # citeseer: /mnt/shared/development/dgl/juyeong/data/4partition/citeseer/citeseer.json
 # ogbn-products: /mnt/shared/data/partitioned/parts4/ogb-product/ogb-product.json
-# ogbn-papers100M: /mnt/shared/data/partitioned/parts4/ogb-paper100M/ogb-paper100M.json

@@ -2,18 +2,12 @@ import dgl
 
 
 class AugDataLoader:
-    def __init__(self, g, samplers, train_nid, args, batch_size, shuffle=False, drop_last=False, device=None):
+    def __init__(self, g, samplers, train_nid, batch_size, shuffle=False, drop_last=False, device=None):
         self.g = g
-        self.drop_last = drop_last
-        self.device = device
-
-        self.fanout = [int(fanout) for fanout in args.fan_out.split(",")]
-
         self.samplers = samplers
-
         self.org_dataloader = dgl.dataloading.DistNodeDataLoader(
             g, train_nid, self.samplers[0],
-            batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, device="cpu")
+            batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, device=device)
 
     def __iter__(self):
         return self._generator()

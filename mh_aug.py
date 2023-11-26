@@ -53,13 +53,14 @@ def mh_aug(args, g, model, train_nid, device):
     acceptance_sum = 0
 
     # Declare Samplers
-    samplers = [dgl.dataloading.NeighborSampler([-1], mask=None),
-                dgl.dataloading.NeighborSampler([-1], mask="prev_emask"),
-                dgl.dataloading.NeighborSampler([-1], mask="cur_emask")]
+    fanout = [-1]
+    samplers = [dgl.dataloading.NeighborSampler(fanout, mask=None),
+                dgl.dataloading.NeighborSampler(fanout, mask="prev_emask"),
+                dgl.dataloading.NeighborSampler(fanout, mask="cur_emask")]
 
     # Declare DataLoader
-    dataloader = AugDataLoader(g, samplers, train_nid, args,
-                               batch_size=args.batch_size, shuffle=False, drop_last=False, device=device)
+    dataloader = AugDataLoader(g, samplers, train_nid,
+                               batch_size=args.batch_size, shuffle=False, drop_last=False, device="cpu")
 
     for step, src_and_blocks in enumerate(dataloader):
         batch_cnt += 1
