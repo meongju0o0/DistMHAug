@@ -1,0 +1,10 @@
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 40.8990 | TestAccuracy 0.7410
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 42.3212 | TestAccuracy 0.7350
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 42.6995 | TestAccuracy 0.7370
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 40.1087 | TestAccuracy 0.6230
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 45.9946 | TestAccuracy 0.7300
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 44.1845 | TestAccuracy 0.7420
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 41.5748 | TestAccuracy 0.7490
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 46.8825 | TestAccuracy 0.7380
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 40.2966 | TestAccuracy 0.7460
+Summary of node classification(GCN): GraphName citeseer | TrainEpochTime(sum) 44.1893 | TestAccuracy 0.7330

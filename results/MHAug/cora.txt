@@ -1,0 +1,10 @@
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 21.1878 | TestAccuracy 0.7470
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 20.5129 | TestAccuracy 0.7910
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 15.3565 | TestAccuracy 0.7930
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 20.9043 | TestAccuracy 0.8060
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 15.0365 | TestAccuracy 0.7880
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 15.6312 | TestAccuracy 0.7290
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 17.7949 | TestAccuracy 0.7840
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 14.6927 | TestAccuracy 0.8160
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 21.2504 | TestAccuracy 0.7880
+Summary of node classification(GCN): GraphName cora | TrainEpochTime(sum) 14.6881 | TestAccuracy 0.8110

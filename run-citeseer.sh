@@ -14,5 +14,5 @@ do
     --num_servers 1 \
     --part_config /mnt/shared/development/dgl/juyeong/data/4partition/citeseer/citeseer.json \
     --ip_config ip_config.txt \
-    "python3 node_classification.py --graph_name citeseer --ip_config ip_config.txt --num_epochs 2000 --batch_size 200"
+    "python3 node_classification.py --graph_name citeseer --ip_config ip_config.txt --num_epochs 600 --batch_size 200"
 done
